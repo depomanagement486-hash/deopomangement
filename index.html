@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chakra E-Trans | Karimnagar Depot Portal</title>
+<style>
+  :root{
+    --bg:#eef2f7; --card:#ffffff; --line:#dfe6ee; --text:#1c2b3a; --muted:#64748b;
+    --blue:#1a3fa0; --blue-dark:#12297a; --blue-tab:#eaf0fb;
+    --green:#1f9254; --green-dark:#177a45; --red:#c0392b; --lime:#8fae1f;
+    --yellow:#fff3b0; --shadow:0 1px 2px rgba(16,32,64,.06), 0 6px 20px rgba(16,32,64,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+
+  /* ---------------- LOGIN SCREEN ---------------- */
+  #loginScreen{
+    position:fixed; inset:0; z-index:100;
+    background:#0a1830 url('login-bg.png') center/cover no-repeat;
+    display:flex; align-items:center; justify-content:flex-end;
+  }
+  #loginScreen::before{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg, rgba(6,14,32,.15) 0%, rgba(6,14,32,.55) 55%, rgba(6,14,32,.75) 100%);
+  }
+  .login-card{
+    position:relative; z-index:2; width:100%; max-width:380px; margin-right:6vw;
+    background:rgba(14,24,46,.72); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.15); border-radius:14px;
+    padding:32px 30px 26px; color:#fff; box-shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+  .login-card h2{margin:0 0 4px; font-size:20px;}
+  .login-card .tag{font-size:12.5px; color:#b9c8ea; margin-bottom:22px;}
+  .login-card label{display:block; font-size:12px; color:#cfd9f5; margin-bottom:6px; font-weight:600;}
+  .login-card input{
+    width:100%; padding:11px 13px; margin-bottom:16px; border-radius:8px; border:1px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.08); color:#fff; font-size:14px; outline:none;
+  }
+  .login-card input::placeholder{color:#9fb0d6;}
+  .login-card input:focus{border-color:var(--lime);}
+  .login-card button{
+    width:100%; padding:12px; border:none; border-radius:8px; font-size:14.5px; font-weight:700;
+    background:linear-gradient(135deg,#c9d84c,#8fae1f); color:#12297a; cursor:pointer;
+  }
+  .login-card button:hover{filter:brightness(1.06);}
+  .login-err{color:#ffb4ac; font-size:12.5px; margin-top:10px; min-height:16px;}
+  .login-hint{font-size:11px; color:#9fb0d6; margin-top:14px; line-height:1.5;}
+
+  /* ---------------- APP SHELL ---------------- */
+  #app{display:none; min-height:100vh; flex-direction:column;}
+  .topbar{
+    background:var(--blue); color:#fff; padding:14px 26px; display:flex; align-items:center;
+    justify-content:space-between; box-shadow:var(--shadow); flex-wrap:wrap; gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand .mark{
+    width:36px;height:36px;border-radius:9px; background:linear-gradient(135deg,#c9d84c,#8fae1f);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#12297a;font-size:15px;
+  }
+  .brand h1{font-size:17px;margin:0;font-weight:700;}
+  .brand span{display:block;font-size:11.5px;color:#c7d4f0;font-weight:400;}
+  .topbar .right{display:flex; align-items:center; gap:14px;}
+  .logout-btn{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
+    padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer;}
+  .logout-btn:hover{background:rgba(255,255,255,.22);}
+
+  .navtabs{display:flex; gap:6px; background:#0f2a72; padding:0 22px; flex-wrap:wrap;}
+  .navtab{
+    padding:12px 18px; font-size:13.5px; font-weight:600; color:#c7d4f0; cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  .navtab.active{color:#fff; border-bottom-color:var(--lime); background:rgba(255,255,255,.05);}
+  .navtab:hover{color:#fff;}
+
+  .page{display:none; flex:1; padding:22px 26px 60px;}
+  .page.active{display:block;}
+  .page.frame-page{padding:0;}
+  .page.frame-page iframe{width:100%; height:calc(100vh - 106px); border:none; display:block;}
+
+  h2.section-title{font-size:17px; margin:0 0 4px;}
+  .section-sub{color:var(--muted); font-size:12.5px; margin-bottom:16px;}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); margin-bottom:20px; overflow:hidden;}
+  .card .card-head{padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .card .card-head h3{margin:0; font-size:14.5px;}
+  .card .card-body{padding:14px 18px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{background:#e3ecdb; border:1px solid #b9c6a8; padding:7px 6px; text-align:center; font-weight:700;}
+  tbody td{border:1px solid #d3d3d3; padding:6px 6px; text-align:center;}
+  tbody td.name{text-align:left; font-weight:600;}
+  tr.total-row td{background:#dbe6ff; font-weight:800;}
+  tr.group-row td{background:#f7f1d4; font-weight:700; text-align:left;}
+  .auto-val{color:var(--blue); font-weight:700;}
+  .loss-pos{color:var(--red); font-weight:700;}
+  .loss-zero{color:var(--green-dark); font-weight:700;}
+  input.cell-input{
+    width:64px; padding:4px 5px; border:1px solid #c9c9c9; border-radius:4px; font-size:12px; text-align:center;
+  }
+  input.cell-input.small{width:50px;}
+  input.cell-input.wide{width:90px;}
+
+  .btn{border:none;border-radius:7px;padding:8px 15px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--blue); color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-green{background:var(--green); color:#fff;}
+  .btn-green:hover{background:var(--green-dark);}
+  .btn-outline{background:#fff; color:var(--blue); border:1px solid var(--line);}
+  .btn-outline:hover{background:var(--blue-tab);}
+  .btn-danger{background:#fff; color:var(--red); border:1px solid #f1c9c3;}
+  .btn-danger:hover{background:#fdecea;}
+  .btn-sm{padding:5px 10px; font-size:11.5px;}
+
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow);}
+  .kpi .val{font-size:22px; font-weight:800; color:var(--blue);}
+  .kpi .lbl{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  .route-block{margin-bottom:22px;}
+  .route-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;}
+  .route-head h4{margin:0; font-size:13.5px; color:var(--blue-dark);}
+  .route-head .meta{font-size:11.5px; color:var(--muted);}
+
+  @media(max-width:720px){
+    .login-card{margin:0 16px;}
+    #loginScreen{justify-content:center;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN SCREEN ================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h2>Chakra E-Trans</h2>
+    <div class="tag">Karimnagar Depot &middot; Boundless Journeys, Embracing All</div>
+    <form id="loginForm">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+      <button type="submit">Sign In</button>
+      <div class="login-err" id="loginErr"></div>
+    </form>
+    <div class="login-hint">Default login: <b>admin</b> / <b>chakra123</b> — change this in index.html (search for CREDENTIALS).</div>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">CE</div>
+      <div>
+        <h1>Chakra E-Trans Karimnagar Pvt Ltd</h1>
+        <span>TGSRTC Karimnagar Depot-2 &middot; Operations Portal</span>
+      </div>
+    </div>
+    <div class="right">
+      <span id="whoami" style="font-size:12.5px;color:#dbe6ff;"></span>
+      <button class="logout-btn" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="navtabs" id="navtabs">
+    <div class="navtab active" data-page="dashboard">Depot Summary</div>
+    <div class="navtab" data-page="routes">Route Summary</div>
+    <div class="navtab" data-page="duty">Duty Chart</div>
+    <div class="navtab" data-page="drivers">Driver Management</div>
+    <div class="navtab" data-page="log">Driver Reporting Log</div>
+  </div>
+
+  <!-- ---------- DASHBOARD (Depot Summary) ---------- -->
+  <div class="page active" id="page-dashboard">
+    <h2 class="section-title">TGSRTC Karimnagar Depot-2 — Depot Summary</h2>
+    <div class="section-sub">Fleet, Ops Services and Opr Kms for the route-linked rows below update automatically the moment buses/trips change in <b>Route Summary</b>. Sch Services / Sch Kms are your planning targets — edit them any time.</div>
+
+    <div class="kpis" id="kpiRow"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Shift-wise Summary</h3>
+        <span style="font-size:11.5px;color:var(--muted);">Date: <input type="date" id="summaryDate" class="cell-input wide"></span>
+      </div>
+      <div class="card-body" style="overflow-x:auto;">
+        <table id="depotTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- ROUTE SUMMARY ---------- -->
+  <div class="page" id="page-routes">
+    <h2 class="section-title">Route Summary — Buses &amp; Trip KMs</h2>
+    <div class="section-sub">Add/edit buses, service numbers and per-trip KMs for every route. Totals recalculate instantly and flow through to the Depot Summary tab.</div>
+    <div style="margin-bottom:16px;">
+      <button class="btn btn-primary btn-sm" id="addRouteBtn">+ Add New Route</button>
+      <button class="btn btn-outline btn-sm" id="resetRoutesBtn">Reset to Seed Data</button>
+    </div>
+    <div id="routesArea"></div>
+  </div>
+
+  <!-- ---------- IFRAME PAGES ---------- -->
+  <div class="page frame-page" id="page-duty">
+    <iframe src="dutychart.html" title="Driver Duty Chart"></iframe>
+  </div>
+  <div class="page frame-page" id="page-drivers">
+    <iframe src="driver_management.html" title="Driver Management"></iframe>
+  </div>
+  <div class="page frame-page" id="page-log">
+    <iframe src="chakra-etrans-driver-log.html" title="Driver Reporting Log"></iframe>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   LOGIN
+   ========================================================================== */
+const CREDENTIALS = { admin: 'chakra123' }; // add more username: 'password' pairs here
+
+const loginForm = document.getElementById('loginForm');
+const loginScreen = document.getElementById('loginScreen');
+const appEl = document.getElementById('app');
+const loginErr = document.getElementById('loginErr');
+
+function showApp(username){
+  loginScreen.style.display = 'none';
+  appEl.style.display = 'flex';
+  document.getElementById('whoami').textContent = 'Signed in as ' + username;
+}
+
+loginForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(CREDENTIALS[u] && CREDENTIALS[u] === p){
+    sessionStorage.setItem('chakra_session', u);
+    loginErr.textContent = '';
+    showApp(u);
+  } else {
+    loginErr.textContent = 'Invalid username or password.';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  sessionStorage.removeItem('chakra_session');
+  location.reload();
+});
+
+(function checkSession(){
+  const existing = sessionStorage.getItem('chakra_session');
+  if(existing && CREDENTIALS[existing]) showApp(existing);
+})();
+
+/* ==========================================================================
+   NAV TABS
+   ========================================================================== */
+document.querySelectorAll('.navtab').forEach(tab=>{
+  tab.addEventListener('click', function(){
+    document.querySelectorAll('.navtab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('page-'+this.dataset.page).classList.add('active');
+    if(this.dataset.page === 'dashboard') renderDepot();
+    if(this.dataset.page === 'routes') renderRoutes();
+  });
+});
+
+/* ==========================================================================
+   DATA MODEL
+   Route: { key, name, busLabel, legLabels:[...], buses:[{busNo,serviceNo,trips:[n,n,...]}] }
+   Depot fixed rows (Section A, not linked to any route tool): manual numbers
+   Depot linked rows (Section B): auto Fleet / OpsServices / OprKms from a route key,
+     Sch Services / Sch Kms editable targets stored in depotManual.
+   ========================================================================== */
+
+const ROUTE_SEED = [
+  { key:'warangal', name:'Warangal', busLabel:'ENV', legLabels:['Krmr-Wgl','Wgl-Nab (Via Krmr)','Nab-Krmr'],
+    buses:[
+      {busNo:'1372', serviceNo:'ENV-15', trips:[152,152,154]},
+      {busNo:'1375', serviceNo:'ENV-16', trips:[152,152,154]},
+      {busNo:'1370', serviceNo:'ENV-17', trips:[0,0,0]},
+      {busNo:'1371', serviceNo:'ENV-18', trips:[0,0,0]},
+      {busNo:'1373', serviceNo:'ENV-19', trips:[152,152,0]},
+      {busNo:'1374', serviceNo:'ENV-20', trips:[152,152,154]},
+      {busNo:'7032', serviceNo:'ENV-21', trips:[152,152,154]},
+      {busNo:'7033', serviceNo:'ENV-23', trips:[152,152,154]},
+      {busNo:'7034', serviceNo:'ENV-24', trips:[152,152,154]},
+      {busNo:'—',    serviceNo:'ENV-22', trips:[0,0,0]}
+    ]},
+  { key:'godavarikhani', name:'Godavarikhani', busLabel:'GDK', legLabels:['Trip 1','Trip 2','Trip 3','Trip 4'],
+    buses:[
+      {busNo:'1754', serviceNo:'KR-GDK 01', trips:[131,131,131,131]},
+      {busNo:'1755', serviceNo:'KR-GDK 02', trips:[131,131,131,131]},
+      {busNo:'1756', serviceNo:'KR-GDK 03', trips:[131,131,131,131]},
+      {busNo:'1757', serviceNo:'KR-GDK 04', trips:[131,131,131,131]},
+      {busNo:'1758', serviceNo:'KR-GDK 05', trips:[131,131,131,131]},
+      {busNo:'1766', serviceNo:'KR-GDK 06', trips:[131,131,131,131]},
+      {busNo:'1767', serviceNo:'KR-GDK 07', trips:[131,131,131,131]},
+      {busNo:'1768', serviceNo:'KR-GDK 08', trips:[131,131,131,131]},
+      {busNo:'1769', serviceNo:'KR-GDK 09', trips:[131,131,131,131]},
+      {busNo:'1935', serviceNo:'KR-GDK 10', trips:[131,131,131,131]},
+      {busNo:'—',    serviceNo:'KR-GDK 11', trips:[131,131,131,131]},
+      {busNo:'—',    serviceNo:'KR-GDK 12', trips:[131,131,131,131]},
+      {busNo:'—',    serviceNo:'KR-GDK 13', trips:[131,131,131,131]},
+      {busNo:'—',    serviceNo:'KR-GDK 14', trips:[131,131,131,131]},
+      {busNo:'1936', serviceNo:'KR-GDK 15', trips:[131,175,175,0]},
+      {busNo:'1937', serviceNo:'KR-GDK 16', trips:[131,175,175,0]},
+      {busNo:'2000', serviceNo:'KR-GDK 17', trips:[131,175,175,0]},
+      {busNo:'2341', serviceNo:'KR-GDK 18', trips:[131,175,175,0]}
+    ]},
+  { key:'amareddy', name:'Amareddy (Kamareddy)', busLabel:'KMR', legLabels:['Trip 1','Trip 2'],
+    buses:[
+      {busNo:'1753', serviceNo:'KR KMR 01', trips:[204,204]},
+      {busNo:'1761', serviceNo:'KR KMR 02', trips:[204,204]},
+      {busNo:'1765', serviceNo:'KR KMR 03', trips:[204,204]},
+      {busNo:'1886', serviceNo:'KR KMR 04', trips:[204,204]},
+      {busNo:'1907', serviceNo:'KR KMR 05', trips:[204,204]},
+      {busNo:'1987', serviceNo:'KR KMR 06', trips:[204,204]}
+    ]},
+  { key:'manthani', name:'Manthani', busLabel:'MNTY', legLabels:['Trip 1','Trip 2','Trip 3'],
+    buses:[
+      {busNo:'1981', serviceNo:'KR MNTY 01', trips:[140,140,183]},
+      {busNo:'1982', serviceNo:'KR MNTY 02', trips:[140,140,183]},
+      {busNo:'1983', serviceNo:'KR MNTY 03', trips:[63,0,0]},
+      {busNo:'1984', serviceNo:'KR MNTY 04', trips:[63,0,0]}
+    ]},
+  { key:'jagtiyal', name:'Jagtiyal', busLabel:'JGTL', legLabels:['Trip 1','Trip 2','Trip 3'],
+    buses:[
+      {busNo:'1770', serviceNo:'KR JGTL 01', trips:[166,166,168]},
+      {busNo:'1771', serviceNo:'KR JGTL 02', trips:[166,166,168]},
+      {busNo:'1772', serviceNo:'KR JGTL 03', trips:[166,166,168]},
+      {busNo:'1773', serviceNo:'KR JGTL 04', trips:[166,166,168]}
+    ]},
+  { key:'ichanchoda', name:'Manchiryal & Lxpt', busLabel:'EM', legLabels:['Trip 1','Trip 2','Trip 3'],
+    buses:[
+      {busNo:'2006', serviceNo:'EM01', trips:[200,200,128]},
+      {busNo:'2007', serviceNo:'EM02', trips:[200,200,128]},
+      {busNo:'2003', serviceNo:'EM03', trips:[200,200,128]},
+      {busNo:'2004', serviceNo:'EM04', trips:[200,200,128]}
+    ]}
+];
+
+// Fixed (non-linked) depot rows — Super Luxury & Express JBS shifts have no
+// route-summary tool behind them, so they stay manually editable here.
+const DEPOT_FIXED_DEFAULT = [
+  {group:'Super Luxury', shift:'Shift-1', service:'JBS', fleet:40, schServ:40, schKms:12640, oprKms:12640, drivers:40},
+  {group:'Super Luxury', shift:'Shift-2', service:'JBS', fleet:40, schServ:30, schKms:12640, oprKms:3480,  drivers:30},
+  {group:'Express',      shift:'Shift-1', service:'JBS', fleet:14, schServ:14, schKms:4336,  oprKms:4336,  drivers:14},
+  {group:'Express',      shift:'Shift-2', service:'JBS', fleet:14, schServ:3,  schKms:4336,  oprKms:2826,  drivers:3}
+];
+
+// Depot rows auto-linked to a Route Summary route (Section B — Express General)
+const DEPOT_LINKED_DEFAULT = {
+  godavarikhani: {schServ:18, schKms:3260, drivers:18},
+  amareddy:      {schServ:6,  schKms:2448, drivers:6},
+  manthani:      {schServ:4,  schKms:1852, drivers:4},
+  ichanchoda:    {schServ:4,  schKms:2112, drivers:4},
+  jagtiyal:      {schServ:4,  schKms:2000, drivers:4}
+};
+// Warangal feeds "Delux Bus / General / WGL-RZB" (also fixed-shell but route-linked)
+const DEPOT_DELUX_DEFAULT = {schServ:8, schKms:4580, drivers:8};
+
+let routes = [];
+let depotFixed = [];
+let depotLinked = {};
+let depotDelux = {};
+
+function loadData(){
+  try{ routes = JSON.parse(localStorage.getItem('chakra_routes')) || JSON.parse(JSON.stringify(ROUTE_SEED)); }
+  catch(e){ routes = JSON.parse(JSON.stringify(ROUTE_SEED)); }
+  try{ depotFixed = JSON.parse(localStorage.getItem('chakra_depot_fixed')) || JSON.parse(JSON.stringify(DEPOT_FIXED_DEFAULT)); }
+  catch(e){ depotFixed = JSON.parse(JSON.stringify(DEPOT_FIXED_DEFAULT)); }
+  try{ depotLinked = JSON.parse(localStorage.getItem('chakra_depot_linked')) || JSON.parse(JSON.stringify(DEPOT_LINKED_DEFAULT)); }
+  catch(e){ depotLinked = JSON.parse(JSON.stringify(DEPOT_LINKED_DEFAULT)); }
+  try{ depotDelux = JSON.parse(localStorage.getItem('chakra_depot_delux')) || JSON.parse(JSON.stringify(DEPOT_DELUX_DEFAULT)); }
+  catch(e){ depotDelux = JSON.parse(JSON.stringify(DEPOT_DELUX_DEFAULT)); }
+}
+function saveRoutes(){ localStorage.setItem('chakra_routes', JSON.stringify(routes)); }
+function saveDepotFixed(){ localStorage.setItem('chakra_depot_fixed', JSON.stringify(depotFixed)); }
+function saveDepotLinked(){ localStorage.setItem('chakra_depot_linked', JSON.stringify(depotLinked)); }
+function saveDepotDelux(){ localStorage.setItem('chakra_depot_delux', JSON.stringify(depotDelux)); }
+
+/* ---------- route math helpers ---------- */
+function busTotal(bus){ return (bus.trips||[]).reduce((s,v)=> s + (Number(v)||0), 0); }
+function routeTotals(route){
+  const fleet = route.buses.length;
+  const ops = route.buses.filter(b=>busTotal(b) > 0).length;
+  const kms = route.buses.reduce((s,b)=> s + busTotal(b), 0);
+  return { fleet, ops, kms };
+}
+function getRoute(key){ return routes.find(r=>r.key===key); }
+
+/* ==========================================================================
+   RENDER: ROUTE SUMMARY
+   ========================================================================== */
+function renderRoutes(){
+  const area = document.getElementById('routesArea');
+  area.innerHTML = '';
+  routes.forEach(route=>{
+    const t = routeTotals(route);
+    const block = document.createElement('div');
+    block.className = 'route-block card';
+    let head = `<div class="card-head">
+        <div>
+          <h4>${route.name} <span class="meta">(${route.busLabel} services)</span></h4>
+        </div>
+        <div class="meta">
+          Buses: <b>${t.fleet}</b> &nbsp;|&nbsp; Running: <b>${t.ops}</b> &nbsp;|&nbsp; Total KMs: <b class="auto-val">${t.kms.toLocaleString()}</b>
+        </div>
+      </div>`;
+    let body = '<div class="card-body" style="overflow-x:auto;"><table><thead><tr><th>Bus No</th><th>Service No</th>';
+    route.legLabels.forEach((lbl,li)=>{ body += `<th>${lbl}</th>`; });
+    body += '<th>Total KMs</th><th></th></tr></thead><tbody>';
+    route.buses.forEach((bus,bi)=>{
+      body += `<tr><td><input class="cell-input" value="${bus.busNo}" onchange="updateBusField('${route.key}',${bi},'busNo',this.value)"></td>`;
+      body += `<td><input class="cell-input wide" value="${bus.serviceNo}" onchange="updateBusField('${route.key}',${bi},'serviceNo',this.value)"></td>`;
+      route.legLabels.forEach((lbl,li)=>{
+        body += `<td><input class="cell-input small" type="number" value="${bus.trips[li]||0}" onchange="updateTrip('${route.key}',${bi},${li},this.value)"></td>`;
+      });
+      body += `<td class="auto-val">${busTotal(bus).toLocaleString()}</td>`;
+      body += `<td><button class="btn btn-danger btn-sm" onclick="removeBus('${route.key}',${bi})">Remove</button></td></tr>`;
+    });
+    body += '</tbody></table></div>';
+    let foot = `<div class="card-body" style="padding-top:0;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-green btn-sm" onclick="addBus('${route.key}')">+ Add Bus</button>
+        <button class="btn btn-outline btn-sm" onclick="addLeg('${route.key}')">+ Add Trip Column</button>
+        <button class="btn btn-danger btn-sm" onclick="removeRoute('${route.key}')">Remove Route</button>
+      </div>`;
+    block.innerHTML = head + body + foot;
+    area.appendChild(block);
+  });
+}
+function updateBusField(routeKey, busIdx, field, value){
+  const r = getRoute(routeKey); if(!r) return;
+  r.buses[busIdx][field] = value;
+  saveRoutes(); renderRoutes();
+}
+function updateTrip(routeKey, busIdx, legIdx, value){
+  const r = getRoute(routeKey); if(!r) return;
+  r.buses[busIdx].trips[legIdx] = Number(value)||0;
+  saveRoutes(); renderRoutes();
+}
+function addBus(routeKey){
+  const r = getRoute(routeKey); if(!r) return;
+  r.buses.push({busNo:'New', serviceNo:r.busLabel+'-'+(r.buses.length+1), trips:r.legLabels.map(()=>0)});
+  saveRoutes(); renderRoutes();
+}
+function removeBus(routeKey, busIdx){
+  const r = getRoute(routeKey); if(!r) return;
+  r.buses.splice(busIdx,1);
+  saveRoutes(); renderRoutes();
+}
+function addLeg(routeKey){
+  const r = getRoute(routeKey); if(!r) return;
+  const label = prompt('Label for new trip column (e.g. "Trip '+(r.legLabels.length+1)+'")', 'Trip '+(r.legLabels.length+1));
+  if(label === null) return;
+  r.legLabels.push(label || ('Trip '+(r.legLabels.length+1)));
+  r.buses.forEach(b=> b.trips.push(0));
+  saveRoutes(); renderRoutes();
+}
+function removeRoute(routeKey){
+  if(!confirm('Remove this entire route? This cannot be undone.')) return;
+  routes = routes.filter(r=>r.key!==routeKey);
+  delete depotLinked[routeKey];
+  saveRoutes(); saveDepotLinked(); renderRoutes();
+}
+function addRoute(){
+  const name = prompt('New route name (e.g. "Peddapally"):');
+  if(!name) return;
+  const key = name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');
+  if(getRoute(key)){ alert('A route with that name already exists.'); return; }
+  routes.push({ key, name, busLabel:name.slice(0,3).toUpperCase(), legLabels:['Trip 1','Trip 2'], buses:[] });
+  depotLinked[key] = {schServ:0, schKms:0, drivers:0};
+  saveRoutes(); saveDepotLinked(); renderRoutes();
+}
+document.getElementById('addRouteBtn').addEventListener('click', addRoute);
+document.getElementById('resetRoutesBtn').addEventListener('click', function(){
+  if(!confirm('Reset all route data back to the original seed values? Your edits will be lost.')) return;
+  routes = JSON.parse(JSON.stringify(ROUTE_SEED));
+  saveRoutes(); renderRoutes(); renderDepot();
+});
+window.updateBusField = updateBusField;
+window.updateTrip = updateTrip;
+window.addBus = addBus;
+window.removeBus = removeBus;
+window.addLeg = addLeg;
+window.removeRoute = removeRoute;
+
+/* ==========================================================================
+   RENDER: DEPOT SUMMARY (auto + manual)
+   ========================================================================== */
+function lossClass(loss){ return loss > 0 ? 'loss-pos' : 'loss-zero'; }
+
+function renderDepot(){
+  // KPIs
+  const warangal = getRoute('warangal');
+  const linkedKeys = Object.keys(depotLinked).filter(k=>getRoute(k));
+  let totalFleet=0, totalSchServ=0, totalOps=0, totalSchKms=0, totalOprKms=0;
+
+  depotFixed.forEach(row=>{
+    totalFleet += Number(row.fleet)||0;
+    totalSchServ += Number(row.schServ)||0;
+    totalOps += Number(row.schServ)||0; // fixed rows: assume ops = sch (no live route feed)
+    totalSchKms += Number(row.schKms)||0;
+    totalOprKms += Number(row.oprKms)||0;
+  });
+  if(warangal){
+    const t = routeTotals(warangal);
+    totalFleet += t.fleet; totalOps += t.ops; totalOprKms += t.kms;
+    totalSchServ += Number(depotDelux.schServ)||0;
+    totalSchKms += Number(depotDelux.schKms)||0;
+  }
+  linkedKeys.forEach(key=>{
+    const r = getRoute(key); const t = routeTotals(r);
+    totalFleet += t.fleet; totalOps += t.ops; totalOprKms += t.kms;
+    totalSchServ += Number(depotLinked[key].schServ)||0;
+    totalSchKms += Number(depotLinked[key].schKms)||0;
+  });
+  const totalLoss = totalSchKms - totalOprKms;
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="val">${totalFleet}</div><div class="lbl">Total Fleet</div></div>
+    <div class="kpi"><div class="val">${totalSchServ}</div><div class="lbl">Scheduled Services</div></div>
+    <div class="kpi"><div class="val">${totalOps}</div><div class="lbl">Operated Services</div></div>
+    <div class="kpi"><div class="val">${totalSchKms.toLocaleString()}</div><div class="lbl">Scheduled KMs</div></div>
+    <div class="kpi"><div class="val">${totalOprKms.toLocaleString()}</div><div class="lbl">Operated KMs</div></div>
+    <div class="kpi"><div class="val" style="color:${totalLoss>0?'#c0392b':'#177a45'}">${totalLoss.toLocaleString()}</div><div class="lbl">Loss KMs</div></div>
+  `;
+
+  // Table
+  let html = `<thead><tr>
+    <th>Model</th><th>Shift</th><th>Service</th><th>Fleet</th><th>Sch Services</th><th>Ops Services</th>
+    <th>Sch Kms</th><th>Opr Kms</th><th>Loss Kms</th><th>No of Drivers</th><th>Not Operating</th>
+  </tr></thead><tbody>`;
+
+  depotFixed.forEach((row,i)=>{
+    const notOp = (Number(row.schServ)||0) - (Number(row.schServ)||0); // no live feed for fixed rows
+    const loss = (Number(row.schKms)||0) - (Number(row.oprKms)||0);
+    html += `<tr>
+      <td class="name">${row.group}</td><td>${row.shift}</td><td>${row.service}</td>
+      <td><input class="cell-input small" type="number" value="${row.fleet}" onchange="updateFixed(${i},'fleet',this.value)"></td>
+      <td><input class="cell-input small" type="number" value="${row.schServ}" onchange="updateFixed(${i},'schServ',this.value)"></td>
+      <td>${row.schServ}</td>
+      <td><input class="cell-input wide" type="number" value="${row.schKms}" onchange="updateFixed(${i},'schKms',this.value)"></td>
+      <td><input class="cell-input wide" type="number" value="${row.oprKms}" onchange="updateFixed(${i},'oprKms',this.value)"></td>
+      <td class="${lossClass(loss)}">${loss.toLocaleString()}</td>
+      <td><input class="cell-input small" type="number" value="${row.drivers}" onchange="updateFixed(${i},'drivers',this.value)"></td>
+      <td>${notOp}</td>
+    </tr>`;
+  });
+
+  if(warangal){
+    const t = routeTotals(warangal);
+    const loss = (Number(depotDelux.schKms)||0) - t.kms;
+    const notOp = (Number(depotDelux.schServ)||0) - t.ops;
+    html += `<tr>
+      <td class="name">Delux Bus</td><td>General</td><td>Warangal (WGL/RZB)</td>
+      <td class="auto-val">${t.fleet}</td>
+      <td><input class="cell-input small" type="number" value="${depotDelux.schServ}" onchange="updateDelux('schServ',this.value)"></td>
+      <td class="auto-val">${t.ops}</td>
+      <td><input class="cell-input wide" type="number" value="${depotDelux.schKms}" onchange="updateDelux('schKms',this.value)"></td>
+      <td class="auto-val">${t.kms.toLocaleString()}</td>
+      <td class="${lossClass(loss)}">${loss.toLocaleString()}</td>
+      <td><input class="cell-input small" type="number" value="${depotDelux.drivers}" onchange="updateDelux('drivers',this.value)"></td>
+      <td>${notOp}</td>
+    </tr>`;
+  }
+
+  html += `<tr class="group-row"><td colspan="11">Express — General (route-linked, auto-updates from Route Summary)</td></tr>`;
+  linkedKeys.forEach(key=>{
+    const r = getRoute(key); const t = routeTotals(r);
+    const link = depotLinked[key];
+    const loss = (Number(link.schKms)||0) - t.kms;
+    const notOp = (Number(link.schServ)||0) - t.ops;
+    html += `<tr>
+      <td class="name">Express</td><td>General</td><td>${r.name}</td>
+      <td class="auto-val">${t.fleet}</td>
+      <td><input class="cell-input small" type="number" value="${link.schServ}" onchange="updateLinked('${key}','schServ',this.value)"></td>
+      <td class="auto-val">${t.ops}</td>
+      <td><input class="cell-input wide" type="number" value="${link.schKms}" onchange="updateLinked('${key}','schKms',this.value)"></td>
+      <td class="auto-val">${t.kms.toLocaleString()}</td>
+      <td class="${lossClass(loss)}">${loss.toLocaleString()}</td>
+      <td><input class="cell-input small" type="number" value="${link.drivers}" onchange="updateLinked('${key}','drivers',this.value)"></td>
+      <td>${notOp}</td>
+    </tr>`;
+  });
+
+  html += `<tr class="total-row">
+    <td colspan="3">TOTAL</td>
+    <td>${totalFleet}</td><td>${totalSchServ}</td><td>${totalOps}</td>
+    <td>${totalSchKms.toLocaleString()}</td><td>${totalOprKms.toLocaleString()}</td>
+    <td class="${lossClass(totalLoss)}">${totalLoss.toLocaleString()}</td>
+    <td>${depotFixed.reduce((s,r)=>s+(Number(r.drivers)||0),0) + (Number(depotDelux.drivers)||0) + linkedKeys.reduce((s,k)=>s+(Number(depotLinked[k].drivers)||0),0)}</td>
+    <td>${totalSchServ-totalOps}</td>
+  </tr>`;
+  html += '</tbody>';
+  document.getElementById('depotTable').innerHTML = html;
+}
+function updateFixed(idx, field, value){
+  depotFixed[idx][field] = Number(value)||0;
+  saveDepotFixed(); renderDepot();
+}
+function updateDelux(field, value){
+  depotDelux[field] = Number(value)||0;
+  saveDepotDelux(); renderDepot();
+}
+function updateLinked(key, field, value){
+  if(!depotLinked[key]) depotLinked[key] = {schServ:0, schKms:0, drivers:0};
+  depotLinked[key][field] = Number(value)||0;
+  saveDepotLinked(); renderDepot();
+}
+window.updateFixed = updateFixed;
+window.updateDelux = updateDelux;
+window.updateLinked = updateLinked;
+
+/* ---------- boot ---------- */
+loadData();
+document.getElementById('summaryDate').value = new Date().toISOString().slice(0,10);
+renderDepot();
+renderRoutes();
+</script>
+</body>
+</html>

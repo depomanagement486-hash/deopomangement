@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Driver Duty Chart</title>
+<style>
+  :root{
+    --band:#e3ecdb; --cream:#fdf1d4; --white:#ffffff; --pink:#f7b9bb;
+    --blue:#b9c6e6; --green:#c7e0c2; --border:#8a8a8a; --ink:#1c1c1c; --accent:#2f6f3e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; padding:16px; background:#f2f2ee; font-family:"Segoe UI",Arial,sans-serif; color:var(--ink); font-size:13px;}
+  h1{font-size:18px; margin:0 0 4px 0;}
+  .sub{color:#555; font-size:12px; margin-bottom:14px;}
+
+  .panel{background:var(--white); border:1px solid #ccc; border-radius:8px; padding:12px 14px; margin-bottom:14px;
+    display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;}
+  .field{display:flex; flex-direction:column; gap:3px;}
+  .field label{font-size:11px; font-weight:600; color:#444;}
+  .field input, .field select{padding:6px 8px; border:1px solid #bbb; border-radius:5px; font-size:12px; min-width:130px;}
+  .field input.wide{min-width:340px;}
+  button{background:var(--accent); color:#fff; border:none; border-radius:5px; padding:7px 14px; font-size:12px; cursor:pointer; font-weight:600;}
+  button.secondary{background:#6b6b6b;}
+  button.danger{background:#a33d3d;}
+  button.small{padding:4px 9px; font-size:11px;}
+  button:hover{filter:brightness(1.08);}
+  .status{font-size:11.5px; color:#555; margin-left:4px;}
+  .status.err{color:#a33d3d; font-weight:600;}
+  .status.ok{color:#2f6f3e; font-weight:600;}
+
+  textarea{width:100%; min-height:100px; font-family:monospace; font-size:11.5px; padding:8px; border:1px solid #bbb; border-radius:5px;}
+
+  .tabs{display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px;}
+  .tab{padding:7px 13px; background:#ddd8c4; border:1px solid #b8b190; border-bottom:none; border-radius:6px 6px 0 0;
+    cursor:pointer; font-size:12px; font-weight:600; color:#444;}
+  .tab.active{background:var(--band); color:var(--ink); border-color:#8ea87f;}
+  .tab .count{font-weight:400; color:#666; font-size:10.5px;}
+
+  .chart-wrap{border:1px solid var(--border); border-radius:0 6px 6px 6px; overflow:hidden;}
+  table{width:100%; border-collapse:collapse; background:var(--white);}
+  .band-row td{background:var(--band); font-weight:700; text-align:center; border:1px solid var(--border); padding:6px 4px; font-size:13px;}
+  thead.cols th{background:var(--band); border:1px solid var(--border); padding:6px 5px; font-size:11.5px; font-weight:700; text-align:center;}
+  tbody td{border:1px solid #d3d3d3; padding:5px 6px; font-size:12px; text-align:center; white-space:nowrap;}
+  tbody td.name{text-align:left; font-weight:600;}
+  tr.r-even td{background:var(--cream);}
+  tr.r-odd td{background:var(--white);}
+  tr.r-noshow td{background:var(--pink) !important;}
+  tr.r-night td{background:var(--blue) !important;}
+  tr.r-mnty td{background:var(--green) !important;}
+  tr:hover td{filter:brightness(0.97);}
+
+  .badge{display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-weight:700;}
+  .badge.planned{background:#eee; color:#555;}
+  .badge.reassigned{background:#ffe6a3; color:#7a5b00;}
+  .badge.noshow{background:#f7b9bb; color:#7a1f22;}
+  .badge.pool{background:#dfe8ff; color:#1a3fa0;}
+
+  .mini-btn{padding:3px 7px; font-size:10.5px; border-radius:4px; border:none; cursor:pointer; font-weight:700; margin:1px;}
+  .mini-btn.no{background:var(--pink); color:#5b1113;}
+  .mini-btn.reset{background:#ddd; color:#333;}
+  .mini-btn.del{background:#eee; color:#a33d3d;}
+
+  select.assign-select{font-size:11.5px; padding:2px 3px; max-width:170px;}
+
+  .empty{padding:30px; text-align:center; color:#777; font-size:13px;}
+  .footer-note{font-size:11px; color:#777; margin-top:10px; line-height:1.5;}
+  .slot-form{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;}
+  .slot-form input, .slot-form select{padding:5px 7px; border:1px solid #bbb; border-radius:4px; font-size:11.5px;}
+</style>
+</head>
+<body>
+
+<h1>Driver Duty Chart</h1>
+<div class="sub">Fixed route/time slots (seeded from your original charts) filled each day from your live driver list, with fair rotation and no-show override.</div>
+
+<div class="panel">
+  <div class="field">
+    <label>Google Sheet (Apps Script) URL</label>
+    <input type="text" id="sheetUrl" class="wide"
+      value="https://script.google.com/macros/s/AKfycbywY25RhrAk3jceU_TMWPQhu-0m3JGGaI_WYzDK2AExxh3882AdEHBJxC-sTGdacZwieg/exec">
+  </div>
+  <div class="field"><button id="loadBtn">Load driver pool</button></div>
+  <div class="field">
+    <label>Duty date</label>
+    <input type="date" id="dutyDate">
+  </div>
+  <div class="field"><button id="autoAssignBtn" class="secondary">Auto-assign open slots</button></div>
+  <div class="field"><button id="resetDayBtn" class="danger">Clear today's overrides</button></div>
+  <span id="statusMsg" class="status"></span>
+</div>
+
+<div class="panel" id="importPanel" style="display:none;">
+  <div class="field" style="flex:1; min-width:280px;">
+    <label>Couldn't fetch automatically? Paste the sheet's JSON/CSV output here</label>
+    <textarea id="pasteArea" placeholder="Paste rows here"></textarea>
+  </div>
+  <div class="field"><button id="importPasteBtn">Import pasted driver list</button></div>
+</div>
+
+<div class="tabs" id="tabBar"></div>
+<div class="chart-wrap" id="chartArea"></div>
+<div class="footer-note" id="footerNote"></div>
+
+<script>
+/* ============================================================
+   DATA MODEL
+   pool driver: { empId, empName, phone, depot, designation, status }
+   slot: { id, chart, servNo, group, night, driverRT, schDept, schArvl, regNo }
+   assignment (per date+slotId): { empId, status, note }
+   stats (per empId): { lastDutyDate, dutyCount }
+   ============================================================ */
+
+const $ = (id) => document.getElementById(id);
+function setStatus(msg, kind){ const el=$('statusMsg'); el.textContent=msg; el.className='status'+(kind?' '+kind:''); }
+
+let pool = [];
+let slots = [];
+let assignments = {};
+let stats = {};
+let activeTab = 'ALL';
+
+/* ---------- seed slot template (from the three original duty charts) ---------- */
+function seedSlots(){
+  const c1 = [ // Duty Chart -1
+    ['EJ 01','11:20','00:20','08:00',''],['EJ 03','11:40','00:40','08:15','7001/02'],
+    ['EJ 07','00:50','01:50','09:40','7003/04'],['EJ 11','01:40','02:40','10:30','7005/06'],
+    ['EJ 13','02:00','03:00','11:00','7007/08'],['EJ 15','02:20','03:20','11:30','7009/10'],
+    ['EJ 17','02:50','03:50','11:50','7011/12'],['EJ 19','03:20','04:20','12:20','7013/14'],
+    ['EJ 21','03:40','04:40','12:40','7015/16'],['EJ 23','03:50','04:50','13:15','7017/18'],
+    ['ED 20 N/W','03:15','04:15','17:05',''],['ED 21 N/W','03:55','04:55','17:45',''],
+    ['ED 22 N/W','04:30','05:30','18:25',''],['ED 23 N/W','05:30','06:30','19:05',''],
+    ['ED 24 N/W','06:00','07:00','19:45',''],['ED 18 W/N','07:00','08:00','20:30',''],
+    ['EJ 33','05:50','06:50','15:00','7025/26'],['EJ 37','06:30','07:30','15:30','7027/28'],
+    ['EJ 41','07:00','08:00','16:35','7029/30'],['EJ 43','07:10','08:10','16:45','7031/32'],
+    ['EJ 49','08:30','09:30','17:40','7033/34'],['EJ 53','09:05','10:05','18:10','7035/36'],
+    ['EJ 57','09:40','10:40','18:50','7037/38'],['EJ 63','10:30','11:30','19:30','7039/40'],
+    ['EJ 65','10:50','11:50','19:50','']
+  ];
+  const c2 = [ // Duty Chart -2
+    ['EJ 02','11:00','12:00','20:00','7041/42'],['EJ 04','11:20','12:20','20:20','7043/44'],
+    ['EJ 08','11:40','12:40','20:30',''],['EJ 12','12:20','13:20','21:15',''],
+    ['EJ 14','12:35','13:35','21:35','7045/46'],['EJ 16','12:50','13:50','21:55','7047/48'],
+    ['EJ 20','13:50','14:50','22:50','7049/50'],['ED 12','14:10','15:10','23:20',''],
+    ['EJ 72','14:40','15:40','23:30',''],['EJ 24','14:55','15:55','23:40','7051/52'],
+    ['EJ 28','15:10','16:10','00:10','7053/54'],['EJ 30','15:40','16:40','00:30',''],
+    ['ED 12','16:00','17:00','00:50','7055/56'],['EJ 36','16:40','17:40','01:50','7057/58'],
+    ['EJ 38','16:55','17:55','02:10',''],['ED 12','17:20','18:20','02:15','7059/60'],
+    ['ED 12','17:35','18:35','02:55','7061/62'],['EJ 44','17:50','18:50','03:05',''],
+    ['EJ 80','18:05','19:05','03:15',''],['EJ 46','18:20','19:20','03:30','7063/64'],
+    ['EJ 50','19:00','20:00','04:10','7065/66'],['EJ 54','19:40','20:40','04:40','7067/68'],
+    ['EJ 58','20:30','21:30','05:30',''],['EJ 60','20:50','21:50','06:10','7069/70'],
+    ['EJ 62','21:20','22:20','06:30',''],['EJ 64','21:50','22:50','07:00','7071/72']
+  ];
+  const c3 = [ // Duty Chart -3
+    ['JE 15','02:05','03:05','11:00',''],['JE 17','02:35','03:35','11:45',''],
+    ['JE 19','03:05','04:05','12:15',''],['JE 05','03:35','04:35','12:45',''],
+    ['KR JGTL 01','03:50','04:50','20:20',''],['JE 07','03:50','04:50','13:30',''],
+    ['JE 09','04:10','05:10','13:40',''],['KR MNTY 02','04:30','05:30','19:15',''],
+    ['KR JGTL 02','04:50','05:50','21:20',''],['JE 11','04:50','05:50','14:10',''],
+    ['JE 21','05:10','06:10','14:20',''],['JE 23','05:30','06:30','14:40',''],
+    ['KR KMR 01','03:45','04:45','15:50',''],['KR JGTL 03','05:50','06:50','22:20',''],
+    ['JE 25','06:00','07:00','14:50',''],['JE 27','06:10','07:10','15:30',''],
+    ['JE 29','06:30','07:30','16:00',''],['KR MNTY 04','06:50','07:50','21:10',''],
+    ['JE 31','07:00','08:00','16:30',''],['JE 33','07:50','08:50','17:10',''],
+    ['KR KMR 03','05:00','06:00','17:00',''],['KR-GDK 15','04:00','05:00','21:10',''],
+    ['KR-GDK 16','04:25','05:25','21:30',''],['KR KMR 04','05:30','06:30','17:30',''],
+    ['KR KMR 05','06:00','07:00','18:00',''],['KR KMR 06','06:30','07:30','18:30',''],
+    ['KR-GDK 07','05:10','06:10','22:30',''],['KR-GDK 08','08:05','09:05','06:00',''],
+    ['KR-GDK 09','10:05','11:05','10:00',''],['KR-GDK 10','05:30','06:30','23:00',''],
+    ['KR-GDK 11','05:00','06:00','20:30',''],['KR-GDK 12','05:40','06:40','20:50',''],
+    ['KR-GDK 13','06:00','07:00','21:40',''],['KR-GDK 14','06:30','07:30','22:40',''],
+    ['JE 16','13:10','14:10','22:00',''],['JE 18','13:40','14:40','22:50',''],
+    ['JE20','13:50','14:50','23:30',''],['JE 06','14:50','15:50','00:00',''],
+    ['JE 08','15:05','16:05','00:30',''],['JE 10','15:50','16:50','00:45',''],
+    ['JE 12','16:20','17:20','01:00',''],['JE 22','16:20','17:20','02:30',''],
+    ['JE 24','16:35','17:35','02:00',''],['JE 26','16:50','17:50','02:00',''],
+    ['JE 28','17:05','18:05','02:15',''],['JE 30','17:40','18:40','02:45',''],
+    ['JE 32','18:00','19:00','03:00',''],['JE 34','18:50','19:50','04:00','']
+  ];
+  const out = [];
+  let n = 1;
+  [['Duty Chart -1',c1],['Duty Chart -2',c2],['Duty Chart -3',c3]].forEach(([chart,rows])=>{
+    rows.forEach(([servNo,rt,dept,arvl,reg])=>{
+      out.push(makeSlot(n++, chart, servNo, rt, dept, arvl, reg));
+    });
+  });
+  return out;
+}
+function makeSlot(id, chart, servNo, rt, dept, arvl, reg){
+  return {
+    id: 'slot_'+id, chart, servNo,
+    group: deriveGroup(servNo), night: isNightRow(servNo),
+    driverRT: rt, schDept: dept, schArvl: arvl, regNo: reg
+  };
+}
+function deriveGroup(servNo){
+  let s = String(servNo||'').replace(/-/g,' ').replace(/\s+/g,' ').trim();
+  s = s.replace(/\d+\s*$/,'').trim();
+  s = s.replace(/N\/?W$/i,'').trim();
+  return s || 'OTHER';
+}
+function isNightRow(servNo){ return /N\/?W/i.test(String(servNo||'')); }
+
+/* ---------- persistence ---------- */
+async function loadPersisted(){
+  try{ const s=await window.storage.get('duty:slots',false); if(s) slots=JSON.parse(s.value); }catch(e){}
+  if(!slots.length) slots = seedSlots();
+  try{ const p=await window.storage.get('duty:pool',false); if(p) pool=JSON.parse(p.value); }catch(e){}
+  try{ const a=await window.storage.get('duty:assignments',false); if(a) assignments=JSON.parse(a.value); }catch(e){}
+  try{ const st=await window.storage.get('duty:stats',false); if(st) stats=JSON.parse(st.value); }catch(e){}
+}
+async function saveSlots(){ try{ await window.storage.set('duty:slots',JSON.stringify(slots),false);}catch(e){} }
+async function savePool(){ try{ await window.storage.set('duty:pool',JSON.stringify(pool),false);}catch(e){} }
+async function saveAssignments(){ try{ await window.storage.set('duty:assignments',JSON.stringify(assignments),false);}catch(e){} }
+async function saveStats(){ try{ await window.storage.set('duty:stats',JSON.stringify(stats),false);}catch(e){} }
+
+/* ---------- flexible column matching ---------- */
+function pick(obj, ...keys){
+  for(const k of keys){
+    for(const ok of Object.keys(obj)){
+      if(ok.toLowerCase().replace(/[^a-z0-9]/g,'') === k.toLowerCase().replace(/[^a-z0-9]/g,'')) return obj[ok];
+    }
+  }
+  return '';
+}
+function normalizeDriver(obj){
+  return {
+    empId: String(pick(obj,'EmployeeID','Employee Id','EmpID','Emp ID','DriverID','Driver Id')).trim(),
+    empName: pick(obj,'Name','FullName','Full Name','EmpName','Emp Name'),
+    phone: pick(obj,'Mobile','MobileNumber','Mobile Number','PhneNo','Phone No'),
+    depot: pick(obj,'Depot'),
+    designation: pick(obj,'Designation') || 'Driver',
+    status: pick(obj,'Status','EmpStatus') || 'Active'
+  };
+}
+
+/* ---------- fetch driver pool from Apps Script ---------- */
+async function loadPool(){
+  let url = $('sheetUrl').value.trim();
+  if(!url){ setStatus('Enter a Sheet URL first.', 'err'); return; }
+  if(!/[?&]action=/.test(url)) url += (url.includes('?') ? '&' : '?') + 'action=list';
+  setStatus('Loading driver pool…');
+  try{
+    const res = await fetch(url, {method:'GET'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    let data;
+    try{ data = JSON.parse(text); }catch(e){ data = parseCSV(text); }
+    applyIncomingPool(data);
+    setStatus('Loaded ' + pool.length + ' drivers from the sheet.', 'ok');
+    $('importPanel').style.display = 'none';
+  }catch(err){
+    setStatus('Could not fetch directly. Paste the sheet output below instead.', 'err');
+    $('importPanel').style.display = 'flex';
+  }
+}
+function parseCSV(text){
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(',').map(h=>h.trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const cells = line.split(',');
+    const obj = {};
+    headers.forEach((h,i)=> obj[h] = (cells[i]||'').trim());
+    return obj;
+  });
+}
+function applyIncomingPool(data){
+  if(!Array.isArray(data)){
+    if(data && Array.isArray(data.rows)) data = data.rows;
+    else if(data && Array.isArray(data.drivers)) data = data.drivers;
+    else throw new Error('Unrecognized data shape');
+  }
+  pool = data.map(normalizeDriver).filter(d=>d.empId);
+  pool.forEach(d=>{ if(!stats[d.empId]) stats[d.empId] = {lastDutyDate:null, dutyCount:0}; });
+  savePool(); saveStats();
+  render();
+}
+$('importPasteBtn').onclick = () => {
+  const raw = $('pasteArea').value.trim();
+  if(!raw){ setStatus('Paste some data first.', 'err'); return; }
+  try{
+    let data;
+    try{ data = JSON.parse(raw); }catch(e){ data = parseCSV(raw); }
+    applyIncomingPool(data);
+    setStatus('Imported ' + pool.length + ' drivers from pasted data.', 'ok');
+  }catch(e){ setStatus('Could not parse that data. Check the format.', 'err'); }
+};
+$('loadBtn').onclick = loadPool;
+
+/* ---------- fairness ordering ---------- */
+function fairnessSort(ids){
+  return [...ids].sort((a,b)=>{
+    const sa = stats[a] || {lastDutyDate:null,dutyCount:0};
+    const sb = stats[b] || {lastDutyDate:null,dutyCount:0};
+    if(!sa.lastDutyDate && sb.lastDutyDate) return -1;
+    if(sa.lastDutyDate && !sb.lastDutyDate) return 1;
+    if(sa.lastDutyDate !== sb.lastDutyDate) return (sa.lastDutyDate||'').localeCompare(sb.lastDutyDate||'');
+    return sa.dutyCount - sb.dutyCount;
+  });
+}
+function bumpStat(empId, date){
+  if(!stats[empId]) stats[empId] = {lastDutyDate:null, dutyCount:0};
+  stats[empId].lastDutyDate = date;
+  stats[empId].dutyCount += 1;
+}
+function currentDate(){ return $('dutyDate').value || new Date().toISOString().slice(0,10); }
+
+/* ---------- assignment actions ---------- */
+$('autoAssignBtn').onclick = () => {
+  if(!pool.length){ setStatus('Load the driver pool first.', 'err'); return; }
+  const today = currentDate();
+  const activeIds = pool.filter(d=>d.status==='Active').map(d=>d.empId);
+  const usedToday = new Set(Object.entries(assignments).filter(([k])=>k.startsWith(today+'|')).map(([,v])=>v.empId));
+  let queue = fairnessSort(activeIds).filter(id=>!usedToday.has(id));
+
+  slots.forEach(s=>{
+    const key = today+'|'+s.id;
+    if(assignments[key]) return;
+    const empId = queue.shift();
+    if(!empId){ assignments[key] = {empId:'', status:'noshow', note:'No driver available'}; return; }
+    assignments[key] = {empId, status:'planned', note:''};
+    bumpStat(empId, today);
+  });
+  saveAssignments(); saveStats();
+  setStatus('Assigned all open slots for ' + today + '.', 'ok');
+  render();
+};
+
+$('resetDayBtn').onclick = () => {
+  const today = currentDate();
+  Object.keys(assignments).forEach(k=>{ if(k.startsWith(today+'|')) delete assignments[k]; });
+  saveAssignments();
+  setStatus('Cleared overrides for ' + today + '.', 'ok');
+  render();
+};
+
+function markNoShow(slotId){
+  const today = currentDate();
+  const key = today+'|'+slotId;
+  const current = assignments[key] ? assignments[key].empId : '';
+  const usedToday = new Set(Object.entries(assignments).filter(([k])=>k.startsWith(today+'|')).map(([,v])=>v.empId));
+  const activeIds = pool.filter(d=>d.status==='Active' && d.empId!==current).map(d=>d.empId);
+  const queue = fairnessSort(activeIds).filter(id=>!usedToday.has(id));
+  const replacement = queue[0];
+  if(replacement){
+    assignments[key] = {empId:replacement, status:'reassigned', note:'Replaced no-show'};
+    bumpStat(replacement, today);
+  } else {
+    assignments[key] = {empId:'', status:'noshow', note:'No replacement available'};
+  }
+  saveAssignments(); saveStats();
+  render();
+}
+function manualAssign(slotId, empId){
+  if(!empId) return;
+  const today = currentDate();
+  assignments[today+'|'+slotId] = {empId, status:'reassigned', note:'Manually reassigned'};
+  bumpStat(empId, today);
+  saveAssignments(); saveStats();
+  render();
+}
+function clearOverride(slotId){
+  delete assignments[currentDate()+'|'+slotId];
+  saveAssignments();
+  render();
+}
+window.markNoShow = markNoShow;
+window.manualAssign = manualAssign;
+window.clearOverride = clearOverride;
+
+/* ---------- slot management ---------- */
+function addSlot(){
+  const chart = $('slotChart').value.trim() || 'Duty Chart -1';
+  const servNo = $('slotServ').value.trim();
+  if(!servNo){ setStatus('Serv No is required to add a slot.', 'err'); return; }
+  const id = 'slot_' + Date.now();
+  slots.push(makeSlot(id.replace('slot_',''), chart, servNo, $('slotRT').value, $('slotDept').value, $('slotArvl').value, $('slotReg').value));
+  ['slotServ','slotRT','slotDept','slotArvl','slotReg'].forEach(f=>$(f).value='');
+  saveSlots();
+  render();
+}
+function deleteSlot(id){
+  slots = slots.filter(s=>s.id!==id);
+  saveSlots();
+  render();
+}
+window.deleteSlot = deleteSlot;
+$('slotAddBtn') && ($('slotAddBtn').onclick = addSlot);
+
+/* ---------- rendering ---------- */
+function chartsPresent(){ return [...new Set(slots.map(s=>s.chart))].sort(); }
+
+function renderTabs(){
+  const bar = $('tabBar');
+  const charts = chartsPresent();
+  const tabs = ['ALL', ...charts, 'POOL', 'ROTATION', 'SLOTS'];
+  bar.innerHTML = tabs.map(t=>{
+    const labelMap = {ALL:'All Charts', POOL:'Driver Pool', ROTATION:'Rotation Overview', SLOTS:'Manage Slots'};
+    const label = labelMap[t] || t;
+    let count;
+    if(t==='ALL') count = slots.length;
+    else if(t==='POOL') count = pool.length;
+    else if(t==='ROTATION') count = pool.length;
+    else if(t==='SLOTS') count = slots.length;
+    else count = slots.filter(s=>s.chart===t).length;
+    return `<div class="tab ${t===activeTab?'active':''}" onclick="setTab('${t}')">${label} <span class="count">(${count})</span></div>`;
+  }).join('');
+}
+function setTab(t){ activeTab = t; render(); }
+window.setTab = setTab;
+
+function render(){ renderTabs(); renderBody(); }
+
+function renderBody(){
+  const area = $('chartArea');
+  if(activeTab === 'POOL') return renderPool(area);
+  if(activeTab === 'ROTATION') return renderRotation(area);
+  if(activeTab === 'SLOTS') return renderSlotManager(area);
+  renderChart(area);
+}
+
+function renderChart(area){
+  if(!slots.length){ area.innerHTML = '<div class="empty">No duty slots defined yet. Add some in the Manage Slots tab.</div>'; return; }
+  const today = currentDate();
+  let rows = slots;
+  if(activeTab !== 'ALL') rows = rows.filter(s=>s.chart===activeTab);
+
+  const options = pool.filter(d=>d.status==='Active')
+    .map(d=>`<option value="${d.empId}">${d.empId} — ${d.empName}</option>`).join('');
+
+  let html = `<table><tbody>
+    <tr class="band-row"><td style="width:14%">Date</td><td colspan="9">${activeTab==='ALL'?'All Duty Charts':activeTab}</td></tr>
+    <tr class="band-row"><td>${today}</td><td colspan="9">Assigned Driver</td></tr>
+  </tbody>
+  <thead class="cols"><tr>
+    <th>S.NO</th><th>Serv No.</th><th>Driver RT</th><th>Sch Dept</th><th>Sch Arvl</th>
+    <th>Reg No</th><th>Emp ID</th><th>Emp Name</th><th>Phone No</th><th>Status / Actions</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach((s,i)=>{
+    const key = today+'|'+s.id;
+    const a = assignments[key];
+    const driver = a && a.empId ? pool.find(d=>d.empId===a.empId) : null;
+    const rowClass = a && a.status==='noshow' ? 'r-noshow'
+      : s.group.toUpperCase().includes('MNTY') ? 'r-mnty'
+      : s.night ? 'r-night'
+      : (i%2===0 ? 'r-even' : 'r-odd');
+    const badge = !a ? '<span class="badge planned">Not assigned</span>'
+      : a.status==='noshow' ? '<span class="badge noshow">No driver</span>'
+      : a.status==='reassigned' ? '<span class="badge reassigned">Reassigned</span>'
+      : '<span class="badge pool">Assigned</span>';
+
+    html += `<tr class="${rowClass}">
+      <td>${i+1}</td><td>${s.servNo}</td><td>${s.driverRT}</td><td>${s.schDept}</td><td>${s.schArvl}</td>
+      <td>${s.regNo||''}</td>
+      <td>${driver?driver.empId:'—'}</td>
+      <td class="name">${driver?driver.empName:'—'}</td>
+      <td>${driver?driver.phone:'—'}</td>
+      <td>
+        ${badge}<br>
+        <select class="assign-select" onchange="manualAssign('${s.id}', this.value)">
+          <option value="">Reassign…</option>${options}
+        </select>
+        <button class="mini-btn no" onclick="markNoShow('${s.id}')">No-show</button>
+        ${a?`<button class="mini-btn reset" onclick="clearOverride('${s.id}')">Reset</button>`:''}
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function renderPool(area){
+  if(!pool.length){ area.innerHTML = '<div class="empty">No drivers loaded yet. Click "Load driver pool" above.</div>'; return; }
+  let html = `<table><tbody><tr class="band-row"><td colspan="6">Driver Pool (${pool.length})</td></tr></tbody>
+  <thead class="cols"><tr><th>#</th><th>Emp ID</th><th>Name</th><th>Phone</th><th>Depot</th><th>Status</th></tr></thead><tbody>`;
+  pool.forEach((d,i)=>{
+    html += `<tr class="${i%2===0?'r-even':'r-odd'}">
+      <td>${i+1}</td><td>${d.empId}</td><td class="name">${d.empName}</td><td>${d.phone}</td><td>${d.depot||'—'}</td><td>${d.status}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function renderRotation(area){
+  if(!pool.length){ area.innerHTML = '<div class="empty">No drivers loaded yet.</div>'; return; }
+  const list = pool.map(d=>({...d, ...(stats[d.empId]||{lastDutyDate:null,dutyCount:0})}));
+  const sorted = fairnessSort(list.map(d=>d.empId)).map(id=>list.find(d=>d.empId===id));
+  let html = `<table><tbody><tr class="band-row"><td colspan="5">Rotation Overview — next in line shown first</td></tr></tbody>
+  <thead class="cols"><tr><th>#</th><th>Emp ID</th><th>Name</th><th>Last Duty Date</th><th>Total Duties</th></tr></thead><tbody>`;
+  sorted.forEach((d,i)=>{
+    html += `<tr class="${i%2===0?'r-even':'r-odd'}">
+      <td>${i+1}</td><td>${d.empId}</td><td class="name">${d.empName}</td>
+      <td>${d.lastDutyDate||'Never assigned'}</td><td>${d.dutyCount}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function renderSlotManager(area){
+  let html = `<div style="padding:12px; background:#fff;">
+    <div class="slot-form">
+      <div><label style="font-size:11px;font-weight:600;">Chart</label><br>
+        <select id="slotChart"><option>Duty Chart -1</option><option>Duty Chart -2</option><option>Duty Chart -3</option></select></div>
+      <div><label style="font-size:11px;font-weight:600;">Serv No</label><br><input id="slotServ" placeholder="e.g. EJ 66"></div>
+      <div><label style="font-size:11px;font-weight:600;">Driver RT</label><br><input id="slotRT" placeholder="11:20"></div>
+      <div><label style="font-size:11px;font-weight:600;">Sch Dept</label><br><input id="slotDept" placeholder="12:20"></div>
+      <div><label style="font-size:11px;font-weight:600;">Sch Arvl</label><br><input id="slotArvl" placeholder="20:20"></div>
+      <div><label style="font-size:11px;font-weight:600;">Reg No</label><br><input id="slotReg" placeholder="optional"></div>
+      <div><button id="slotAddBtn">Add slot</button></div>
+    </div>
+  </div>`;
+  html += `<table><thead class="cols"><tr><th>#</th><th>Chart</th><th>Serv No.</th><th>Driver RT</th><th>Sch Dept</th><th>Sch Arvl</th><th>Reg No</th><th></th></tr></thead><tbody>`;
+  slots.forEach((s,i)=>{
+    html += `<tr class="${i%2===0?'r-even':'r-odd'}">
+      <td>${i+1}</td><td>${s.chart}</td><td>${s.servNo}</td><td>${s.driverRT}</td><td>${s.schDept}</td><td>${s.schArvl}</td><td>${s.regNo||''}</td>
+      <td><button class="mini-btn del" onclick="deleteSlot('${s.id}')">Remove</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+  $('slotAddBtn').onclick = addSlot;
+}
+
+/* ---------- boot ---------- */
+(async function init(){
+  $('dutyDate').value = new Date().toISOString().slice(0,10);
+  await loadPersisted();
+  render();
+  $('footerNote').innerHTML =
+    'The tool fetches your sheet with <code>?action=list</code> appended automatically. Duty history (last date driven, ' +
+    'total duties) is saved in this browser so <b>Auto-assign</b> and the <b>Rotation Overview</b> tab stay fair over time. ' +
+    'Use <b>No-show</b> to pull in the next fairest available driver instantly — the row turns pink, matching the original chart. ' +
+    'Add, edit, or remove duty slots any time in the <b>Manage Slots</b> tab.';
+  loadPool();
+})();
+</script>
+</body>
+</html>

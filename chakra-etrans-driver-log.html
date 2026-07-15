@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chakra E-Trans | Driver Reporting Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#141414;
+    --line:#000000;
+    --paper:#ffffff;
+    --paper-shade:#f4f4f2;
+    --gold:#b8860b;
+    --lime:#5a8f1f;
+    --muted:#555;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#dcdcd6;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:24px 12px 60px;
+  }
+  .te{ font-family:'Noto Sans Telugu','Inter',sans-serif; }
+  .sheet{
+    max-width:980px;
+    margin:0 auto;
+    background:var(--paper);
+    border:2px solid var(--line);
+    box-shadow:0 6px 24px rgba(0,0,0,0.25);
+  }
+
+  /* ---------- Header ---------- */
+  .top-row{ display:grid; grid-template-columns:1fr 1fr; border-bottom:2px solid var(--line); }
+  .top-cell{ padding:8px 14px; font-weight:700; font-size:14px; }
+  .top-cell:first-child{border-right:2px solid var(--line);}
+  .top-cell input{
+    border:none;background:transparent;font-weight:700;font-size:14px;
+    border-bottom:1px solid #999;padding:2px 4px;width:170px;font-family:'Inter',sans-serif;
+  }
+  .top-cell input:focus{outline:none;border-bottom:1px solid var(--gold);}
+
+  .brand-row{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    border-bottom:2px solid var(--line);padding:10px 18px;gap:10px;
+  }
+  .brand-left{display:flex;align-items:center;gap:10px;}
+  .logo-mark{
+    width:34px;height:34px;border-radius:50%;
+    background:conic-gradient(from 200deg, var(--lime), var(--gold), var(--lime));
+    flex-shrink:0;
+  }
+  .brand-left .names{line-height:1.15;}
+  .brand-left .names .main{font-size:16px;font-weight:700;}
+  .brand-left .names .sub{font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+  .bus-icon{text-align:center;font-size:11px;color:var(--muted);font-weight:600;}
+  .brand-right{text-align:right;line-height:1.15;}
+  .brand-right .jbm{font-size:20px;font-weight:800;letter-spacing:0.5px;}
+  .brand-right .jbm span{color:var(--gold);}
+  .brand-right .tag{font-size:9px;color:var(--muted);}
+
+  .title-row{
+    text-align:center;padding:8px;border-bottom:2px solid var(--line);
+    font-weight:700;font-size:15px;letter-spacing:0.5px;
+  }
+
+  /* ---------- ID lookup ---------- */
+  .id-block{
+    border-bottom:2px solid var(--line);
+    background:#fbf8ef;
+    padding:12px 16px;
+  }
+  .id-row{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .id-row label{font-weight:700;font-size:13px;white-space:nowrap;}
+  .id-row input{
+    border:1px solid #bbb;border-radius:4px;padding:7px 10px;font-size:14px;
+    font-family:'Inter',sans-serif;width:150px;
+  }
+  .id-row input:focus{outline:none;border-color:var(--gold);}
+  .fetch-btn{
+    background:var(--gold);color:#141414;border:none;font-weight:700;
+    font-size:13px;padding:8px 16px;border-radius:4px;cursor:pointer;
+  }
+  .fetch-btn:hover{background:#a4770a;}
+  .fetch-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  #lookupStatus{font-size:12px;color:var(--muted);}
+  #lookupStatus.ok{color:var(--lime);font-weight:600;}
+  #lookupStatus.err{color:#b23b3b;font-weight:600;}
+  .id-name-row{
+    margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .id-name-row label{font-weight:700;font-size:13px;}
+  .id-name-row input{
+    border:1px solid #bbb;border-radius:4px;padding:7px 10px;font-size:14px;
+    font-family:'Inter',sans-serif;flex:1;min-width:180px;
+  }
+
+  .meta-row{ display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid var(--line); }
+  .meta-cell{
+    padding:8px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;
+  }
+  .meta-cell:first-child{border-right:2px solid var(--line);}
+  .meta-cell input, .meta-cell select{
+    border:none;border-bottom:1px solid #999;background:transparent;
+    font-weight:400;font-size:14px;padding:3px 4px;flex:1;font-family:'Inter',sans-serif;
+  }
+  .meta-cell input:focus, .meta-cell select:focus{outline:none;border-bottom:1px solid var(--gold);}
+
+  /* ---------- Bus model ---------- */
+  .model-block{
+    border-bottom:2px solid var(--line);
+    padding:10px 16px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .model-block label{font-weight:700;font-size:13px;}
+  .model-options{display:flex;gap:8px;flex-wrap:wrap;}
+  .model-chip{
+    border:1.5px solid #999;border-radius:20px;padding:6px 16px;font-size:13px;
+    font-weight:600;cursor:pointer;background:#fff;user-select:none;
+  }
+  .model-chip.active{background:var(--lime);border-color:var(--lime);color:#fff;}
+
+  /* ---------- Shift tabs ---------- */
+  .shift-tab-bar{
+    display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+    padding:10px 16px;background:var(--paper-shade);border-bottom:2px solid var(--line);
+  }
+  .shift-tab-btn{
+    background:#fff;border:1.5px solid #999;border-bottom:none;border-radius:6px 6px 0 0;
+    padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;position:relative;top:1px;
+    color:#555;
+  }
+  .shift-tab-btn.active{
+    background:var(--paper);border-color:var(--ink);color:var(--ink);
+    box-shadow:0 -2px 0 var(--gold) inset;
+  }
+  .add-shift-btn{
+    background:var(--ink);color:#fff;border:none;border-radius:6px;
+    padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;margin-left:auto;
+  }
+  .add-shift-btn:hover{background:var(--gold);color:#141414;}
+  .remove-shift-btn{
+    background:transparent;color:#b23b3b;border:1px solid #b23b3b;border-radius:4px;
+    font-size:11px;font-weight:700;padding:2px 8px;cursor:pointer;margin-left:6px;
+  }
+
+  .shift-panel{ display:none; }
+  .shift-panel.active{ display:block; }
+
+  .data-rows{
+    display:grid;grid-template-columns:minmax(240px,1.7fr) 1fr;
+  }
+  .r-label, .r-cell{
+    padding:8px 12px;border-bottom:1px solid #999;border-right:1px solid #999;
+    display:flex;align-items:center;min-height:38px;
+  }
+  .r-label{
+    flex-direction:column;align-items:flex-start;justify-content:center;
+    font-size:13px;font-weight:600;line-height:1.3;background:var(--paper-shade);
+  }
+  .r-label .te{font-size:11.5px;color:var(--muted);font-weight:400;}
+  .r-cell{border-right:none;}
+  .r-cell input{
+    border:none;background:transparent;width:100%;font-size:14px;
+    font-family:'Inter',sans-serif;padding:2px 2px;
+  }
+  .r-cell input:focus{outline:none;background:#fffbe8;}
+  .section-tab{
+    grid-column:1 / -1;
+    background:#222;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:1px;
+    text-transform:uppercase;padding:7px 14px;
+  }
+
+  .remarks-block{border-top:1px solid #999;}
+  .remarks-block .lbl{
+    padding:8px 12px;font-weight:700;font-size:13px;background:var(--paper-shade);
+    border-bottom:1px solid #999;
+  }
+  .remarks-block textarea{
+    border:none;background:transparent;padding:8px 12px;font-family:'Inter',sans-serif;
+    font-size:13px;resize:vertical;min-height:44px;width:100%;border-bottom:1px solid #999;
+  }
+  .remarks-block textarea:focus{outline:none;background:#fffbe8;}
+  .sign-inline{ display:flex;align-items:center;gap:6px;padding:8px 12px; }
+  .sign-inline label{font-size:11.5px;color:var(--muted);white-space:nowrap;}
+  .sign-inline input{
+    border:none;border-bottom:1px solid #999;background:transparent;font-size:13px;
+    flex:1;padding:2px 4px;font-family:'Inter',sans-serif;
+  }
+  .sign-inline input:focus{outline:none;border-bottom:1px solid var(--gold);}
+
+  .foot-row{ display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--line);border-bottom:2px solid var(--line); }
+  .foot-cell{padding:9px 14px;font-weight:700;font-size:13px;}
+  .foot-cell:first-child{border-right:2px solid var(--line);}
+  .foot-cell input{
+    border:none;border-bottom:1px solid #999;background:transparent;font-weight:400;
+    font-size:13px;width:100%;padding:4px 4px;margin-top:4px;font-family:'Inter',sans-serif;
+  }
+  .foot-cell input:focus{outline:none;border-bottom:1px solid var(--gold);}
+
+  .checklist-row{ display:flex;flex-wrap:wrap;gap:0;padding:10px 14px; }
+  .check-item{
+    display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
+    margin-right:26px;margin-bottom:8px;cursor:pointer;
+  }
+  .check-item input{width:15px;height:15px;accent-color:var(--lime);}
+
+  .submit-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:16px 14px;background:var(--paper-shade);
+  }
+  .status-msg{font-size:12.5px;color:var(--muted);}
+  .status-msg.ok{color:var(--lime);font-weight:600;}
+  .status-msg.err{color:#b23b3b;font-weight:600;}
+  button.save-btn{
+    background:var(--ink);color:#fff;border:none;font-weight:700;font-size:14px;
+    letter-spacing:0.5px;padding:12px 26px;border-radius:4px;cursor:pointer;
+  }
+  button.save-btn:hover{background:var(--gold);color:#141414;}
+  button.save-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .config-note{
+    max-width:980px;margin:0 auto 14px;background:#fff8e1;border:1px solid #e0c068;
+    border-radius:6px;padding:10px 14px;font-size:12px;color:#5a4a1a;line-height:1.6;
+  }
+  .config-note code{background:#eee0b0;padding:1px 5px;border-radius:3px;}
+
+  @media (max-width:720px){
+    .brand-row{grid-template-columns:1fr;text-align:center;}
+    .brand-left{justify-content:center;}
+    .brand-right{text-align:center;}
+    .top-row,.meta-row,.foot-row{grid-template-columns:1fr;}
+    .top-cell:first-child,.meta-cell:first-child,.foot-cell:first-child{border-right:none;border-bottom:1px solid #999;}
+  }
+</style>
+</head>
+<body>
+
+<div class="config-note" id="configNote">
+  ⚙ <strong>One-time setup:</strong> paste your Google Apps Script Web App URL into <code>SCRIPT_URL</code> near the bottom of this file, then reload. The same URL is used both to save entries and to look up driver details by ID (see the <code>doGet</code> code shared alongside this file).
+</div>
+
+<form id="logForm">
+<div class="sheet">
+
+  <div class="top-row">
+    <div class="top-cell">Maintenance No: <input type="text" id="maintenanceNo" placeholder="80198 21275"></div>
+    <div class="top-cell">Operations No: <input type="text" id="operationsNo" placeholder="80198 21276"></div>
+  </div>
+
+  <div class="brand-row">
+    <div class="brand-left">
+      <div class="logo-mark"></div>
+      <div class="names">
+        <div class="main">Chakra E-Trans</div>
+        <div class="sub">Karimnagar Private Limited — Boundless Journeys, Embracing All</div>
+      </div>
+    </div>
+    <div class="bus-icon">🚌</div>
+    <div class="brand-right">
+      <div class="jbm">JBM <span>Group</span></div>
+      <div class="tag">Our milestones are touchstones</div>
+    </div>
+  </div>
+
+  <div class="title-row">CHAKRA E-TRANS (KARIMNAGAR) PRIVATE LIMITED</div>
+
+  <!-- ID LOOKUP -->
+  <div class="id-block">
+    <div class="id-row">
+      <label>Driver ID <span class="te">డ్రైవర్ ID</span></label>
+      <input type="text" id="driverId" placeholder="e.g. CET-0231">
+      <button type="button" class="fetch-btn" id="lookupBtn">Fetch Details</button>
+      <span id="lookupStatus"></span>
+    </div>
+    <div class="id-name-row">
+      <label>Driver Name</label>
+      <input type="text" id="driverName" placeholder="Auto-filled after fetch, or type manually">
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-cell">Driver Reporting Time: <input type="time" id="reportingTime"></div>
+    <div class="meta-cell">Tim Time: <input type="time" id="timTime"></div>
+  </div>
+  <div class="meta-row">
+    <div class="meta-cell">Date: <input type="date" id="logDate" required></div>
+    <div class="meta-cell"></div>
+  </div>
+
+  <!-- BUS MODEL -->
+  <div class="model-block">
+    <label>Bus Model:</label>
+    <div class="model-options" id="modelOptions">
+      <div class="model-chip" data-value="Super Luxury">Super Luxury</div>
+      <div class="model-chip" data-value="Deluxe">Deluxe</div>
+      <div class="model-chip" data-value="Express">Express</div>
+    </div>
+    <input type="hidden" id="busModel" value="">
+  </div>
+
+  <!-- SHIFT TABS -->
+  <div class="shift-tab-bar" id="shiftTabBar">
+    <!-- tab buttons injected here -->
+    <button type="button" class="add-shift-btn" id="addShiftBtn">+ Add Shift</button>
+  </div>
+
+  <div id="shiftPanels"><!-- shift panels injected here --></div>
+
+  <div class="foot-row">
+    <div class="foot-cell">Supervisor Signature: <input type="text" id="supervisorSign"></div>
+    <div class="foot-cell">Received Signature: <input type="text" id="receivedSign"></div>
+  </div>
+
+  <div class="checklist-row">
+    <label class="check-item"><input type="checkbox" id="chk_stepney"> Stepney</label>
+    <label class="check-item"><input type="checkbox" id="chk_jockeyRod"> Jockey &amp; Rod</label>
+    <label class="check-item"><input type="checkbox" id="chk_toolBox"> Tool Box</label>
+    <label class="check-item"><input type="checkbox" id="chk_spareWheel"> Spare Wheel Rod</label>
+    <label class="check-item"><input type="checkbox" id="chk_firstAid"> First Aid Kit</label>
+    <label class="check-item"><input type="checkbox" id="chk_fireExt"> Fire Extinguisher</label>
+  </div>
+
+  <div class="submit-bar">
+    <span class="status-msg" id="statusMsg">Fill in the details above, then save.</span>
+    <button type="submit" class="save-btn" id="saveBtn">Save to Google Sheet</button>
+  </div>
+
+</div>
+</form>
+
+<script>
+  // ============================================================
+  // 1) Deploy the companion Google Apps Script as a Web App
+  //    (Execute as: Me · Who has access: Anyone with the link)
+  // 2) Paste the deployment URL below.
+  //    Used for BOTH: saving entries (POST) and driver ID lookup (GET).
+  // ============================================================
+  const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+  const form = document.getElementById('logForm');
+  const statusMsg = document.getElementById('statusMsg');
+  const saveBtn = document.getElementById('saveBtn');
+  const configNote = document.getElementById('configNote');
+  if (SCRIPT_URL.indexOf('PASTE_YOUR') === -1) configNote.style.display = 'none';
+
+  /* ---------------- Bus model chips ---------------- */
+  const modelOptions = document.getElementById('modelOptions');
+  const busModelInput = document.getElementById('busModel');
+  modelOptions.addEventListener('click', function(e){
+    const chip = e.target.closest('.model-chip');
+    if (!chip) return;
+    [...modelOptions.children].forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    busModelInput.value = chip.dataset.value;
+  });
+
+  /* ---------------- Driver ID lookup ---------------- */
+  const lookupBtn = document.getElementById('lookupBtn');
+  const lookupStatus = document.getElementById('lookupStatus');
+  const driverIdInput = document.getElementById('driverId');
+  const driverNameInput = document.getElementById('driverName');
+
+  async function fetchDriverDetails(){
+    const id = driverIdInput.value.trim();
+    if (!id){
+      lookupStatus.textContent = 'Enter a Driver ID first.';
+      lookupStatus.className = 'err';
+      return;
+    }
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1){
+      lookupStatus.textContent = 'Connect the Google Sheet first (see note above).';
+      lookupStatus.className = 'err';
+      return;
+    }
+    lookupBtn.disabled = true;
+    lookupStatus.textContent = 'Looking up...';
+    lookupStatus.className = '';
+    try{
+      const res = await fetch(SCRIPT_URL + '?id=' + encodeURIComponent(id));
+      const data = await res.json();
+      if (data && data.found){
+        driverNameInput.value = data.name || '';
+        if (data.busModel){
+          [...modelOptions.children].forEach(c => c.classList.toggle('active', c.dataset.value === data.busModel));
+          busModelInput.value = data.busModel;
+        }
+        lookupStatus.textContent = 'Details loaded ✓';
+        lookupStatus.className = 'ok';
+      } else {
+        lookupStatus.textContent = 'No record found for that ID — enter details manually.';
+        lookupStatus.className = 'err';
+      }
+    }catch(err){
+      lookupStatus.textContent = 'Lookup failed — check connection or Script URL.';
+      lookupStatus.className = 'err';
+    }finally{
+      lookupBtn.disabled = false;
+    }
+  }
+  lookupBtn.addEventListener('click', fetchDriverDetails);
+  driverIdInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); fetchDriverDetails(); }
+  });
+
+  /* ---------------- Dynamic shift tabs ---------------- */
+  const shiftTabBar = document.getElementById('shiftTabBar');
+  const addShiftBtn = document.getElementById('addShiftBtn');
+  const shiftPanels = document.getElementById('shiftPanels');
+  let shiftCount = 0;
+
+  const FIELD_ROWS = [
+    ['Service No','serviceNo','text',''],
+    ['Bus No','busNo','text',''],
+    ['__section__','Karimnagar Shedding'],
+    ['Schedule Out Shedding Time','schedOut','time',''],
+    ['Schedule In Shedding Time','schedIn','time',''],
+    ['Actual Out Shedding Time','actualOut','time',''],
+    ['__section__','Outbound — Karimnagar → JBS'],
+    ['SOC Start %','socStart','number','0.1'],
+    ['Starting KM','startKm1','number',''],
+    ['Waiting Start Time — Karimnagar Point','waitKarimStart','time',''],
+    ['At Karimnagar Point Time','atKarimPoint','time',''],
+    ['Moved From Karimnagar Point Time','movedKarimPoint','time',''],
+    ['Reached at JBS Depot Time','reachedJbs','time',''],
+    ['__section__','SOC End &amp; Charging'],
+    ['SOC End %','socEnd','number','0.1'],
+    ['Ending KM','endKm1','number',''],
+    ['Charging Start Time','chargeStart','time',''],
+    ['Charging End Time','chargeEnd','time',''],
+    ['SOC at Charging End %','socChargeEnd','number','0.1'],
+    ['__section__','Return — JBS → Karimnagar'],
+    ['Waiting Start Time — JBS Point','waitJbsStart','time',''],
+    ['At JBS Point Time','atJbsPoint','time',''],
+    ['Moved From JBS Point Time','movedJbsPoint','time',''],
+    ['Starting KM','startKm2','number',''],
+    ['Reached to Karimnagar Time','reachedKarim','time',''],
+    ['SOC % End at Karimnagar','socEndKarim','number','0.1'],
+    ['Ending KM','endKm2','number','']
+  ];
+
+  function buildPanelHTML(n){
+    let rows = '';
+    FIELD_ROWS.forEach(row => {
+      if (row[0] === '__section__'){
+        rows += `<div class="section-tab">${row[1]}</div>`;
+      } else {
+        const [label, key, type, step] = row;
+        const stepAttr = step ? ` step="${step}"` : '';
+        rows += `
+          <div class="r-label">${label}</div>
+          <div class="r-cell"><input type="${type}"${stepAttr} id="shift${n}_${key}"></div>`;
+      }
+    });
+    return `
+      <div class="data-rows">${rows}</div>
+      <div class="remarks-block">
+        <div class="lbl">Remarks / Bus Complaints — రిమార్కులు / బస్సు ఫిర్యాదులు</div>
+        <textarea id="shift${n}_remarks" placeholder="Remarks..."></textarea>
+        <div class="sign-inline">
+          <label>Driver Sign</label>
+          <input type="text" id="shift${n}_driverSign">
+        </div>
+      </div>`;
+  }
+
+  function addShift(){
+    shiftCount += 1;
+    const n = shiftCount;
+
+    const tabBtn = document.createElement('button');
+    tabBtn.type = 'button';
+    tabBtn.className = 'shift-tab-btn';
+    tabBtn.dataset.shift = n;
+    tabBtn.innerHTML = `Shift ${n}` + (n > 1 ? `<span class="remove-shift-btn" data-remove="${n}">×</span>` : '');
+    shiftTabBar.insertBefore(tabBtn, addShiftBtn);
+
+    const panel = document.createElement('div');
+    panel.className = 'shift-panel';
+    panel.id = `panel-shift-${n}`;
+    panel.innerHTML = buildPanelHTML(n);
+    shiftPanels.appendChild(panel);
+
+    activateShift(n);
+  }
+
+  function activateShift(n){
+    document.querySelectorAll('.shift-tab-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.shift) === n));
+    document.querySelectorAll('.shift-panel').forEach(p => p.classList.toggle('active', p.id === `panel-shift-${n}`));
+  }
+
+  shiftTabBar.addEventListener('click', function(e){
+    if (e.target.classList.contains('remove-shift-btn')){
+      const n = e.target.dataset.remove;
+      document.querySelector(`.shift-tab-btn[data-shift="${n}"]`)?.remove();
+      document.getElementById(`panel-shift-${n}`)?.remove();
+      const remaining = document.querySelectorAll('.shift-tab-btn');
+      if (remaining.length) activateShift(Number(remaining[0].dataset.shift));
+      return;
+    }
+    const tabBtn = e.target.closest('.shift-tab-btn');
+    if (tabBtn) activateShift(Number(tabBtn.dataset.shift));
+  });
+
+  addShiftBtn.addEventListener('click', addShift);
+  addShift(); // start with Shift 1
+
+  /* ---------------- Collect + Save ---------------- */
+  function val(id){ const el = document.getElementById(id); return el ? (el.value || "") : ""; }
+  function checked(id){ return document.getElementById(id).checked ? "Yes" : "No"; }
+
+  function collectShiftData(n){
+    const obj = { shiftNumber: n };
+    FIELD_ROWS.forEach(row => {
+      if (row[0] !== '__section__') obj[row[1]] = val(`shift${n}_${row[1]}`);
+    });
+    obj.remarks = val(`shift${n}_remarks`);
+    obj.driverSign = val(`shift${n}_driverSign`);
+    return obj;
+  }
+
+  function collectData(){
+    const shifts = [...document.querySelectorAll('.shift-tab-btn')].map(b => collectShiftData(Number(b.dataset.shift)));
+    return {
+      timestamp: new Date().toISOString(),
+      maintenanceNo: val('maintenanceNo'),
+      operationsNo: val('operationsNo'),
+      driverId: val('driverId'),
+      driverName: val('driverName'),
+      busModel: val('busModel'),
+      logDate: val('logDate'),
+      reportingTime: val('reportingTime'),
+      timTime: val('timTime'),
+      shifts: shifts,
+      supervisorSign: val('supervisorSign'),
+      receivedSign: val('receivedSign'),
+      stepney: checked('chk_stepney'),
+      jockeyRod: checked('chk_jockeyRod'),
+      toolBox: checked('chk_toolBox'),
+      spareWheel: checked('chk_spareWheel'),
+      firstAid: checked('chk_firstAid'),
+      fireExt: checked('chk_fireExt')
+    };
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+
+    if (!val('logDate')){
+      statusMsg.textContent = 'Please enter the Date before saving.';
+      statusMsg.className = 'status-msg err';
+      return;
+    }
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1){
+      statusMsg.textContent = 'Google Sheet not connected yet — add your Apps Script URL in the code.';
+      statusMsg.className = 'status-msg err';
+      return;
+    }
+
+    const data = collectData();
+    saveBtn.disabled = true;
+    statusMsg.textContent = 'Saving...';
+    statusMsg.className = 'status-msg';
+
+    try{
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(data)
+      });
+      statusMsg.textContent = 'Saved to Google Sheet ✓';
+      statusMsg.className = 'status-msg ok';
+      form.reset();
+    }catch(err){
+      statusMsg.textContent = 'Could not save — check your internet connection or Script URL.';
+      statusMsg.className = 'status-msg err';
+    }finally{
+      saveBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>

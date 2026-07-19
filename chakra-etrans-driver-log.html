@@ -112,7 +112,7 @@
   }
   .meta-cell input:focus, .meta-cell select:focus{outline:none;border-bottom:1px solid var(--gold);}
 
-  /* ---------- Bus model ---------- */
+  /* ---------- Bus model + supervisor ---------- */
   .model-block{
     border-bottom:2px solid var(--line);
     padding:10px 16px;
@@ -125,6 +125,14 @@
     font-weight:600;cursor:pointer;background:#fff;user-select:none;
   }
   .model-chip.active{background:var(--lime);border-color:var(--lime);color:#fff;}
+  .supervisor-field{
+    display:flex;align-items:center;gap:8px;margin-left:auto;
+  }
+  .supervisor-field input{
+    border:1px solid #bbb;border-radius:4px;padding:7px 10px;font-size:13px;
+    font-family:'Inter',sans-serif;min-width:180px;
+  }
+  .supervisor-field input:focus{outline:none;border-color:var(--gold);}
 
   /* ---------- Shift tabs ---------- */
   .shift-tab-bar{
@@ -177,6 +185,14 @@
     text-transform:uppercase;padding:7px 14px;
   }
 
+  /* ---------- Auto-calculated duration rows ---------- */
+  .r-label.dur-label{ background:#eef3e4; }
+  .dur-tag{ font-size:10px;font-weight:600;color:var(--lime);text-transform:uppercase;letter-spacing:0.5px; }
+  .r-cell.dur-cell{ background:#f7faf1; }
+  input.dur-output{
+    font-weight:700;color:var(--lime);cursor:not-allowed;
+  }
+
   .remarks-block{border-top:1px solid #999;}
   .remarks-block .lbl{
     padding:8px 12px;font-weight:700;font-size:13px;background:var(--paper-shade);
@@ -184,27 +200,11 @@
   }
   .remarks-block textarea{
     border:none;background:transparent;padding:8px 12px;font-family:'Inter',sans-serif;
-    font-size:13px;resize:vertical;min-height:44px;width:100%;border-bottom:1px solid #999;
+    font-size:13px;resize:vertical;min-height:44px;width:100%;
   }
   .remarks-block textarea:focus{outline:none;background:#fffbe8;}
-  .sign-inline{ display:flex;align-items:center;gap:6px;padding:8px 12px; }
-  .sign-inline label{font-size:11.5px;color:var(--muted);white-space:nowrap;}
-  .sign-inline input{
-    border:none;border-bottom:1px solid #999;background:transparent;font-size:13px;
-    flex:1;padding:2px 4px;font-family:'Inter',sans-serif;
-  }
-  .sign-inline input:focus{outline:none;border-bottom:1px solid var(--gold);}
 
-  .foot-row{ display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--line);border-bottom:2px solid var(--line); }
-  .foot-cell{padding:9px 14px;font-weight:700;font-size:13px;}
-  .foot-cell:first-child{border-right:2px solid var(--line);}
-  .foot-cell input{
-    border:none;border-bottom:1px solid #999;background:transparent;font-weight:400;
-    font-size:13px;width:100%;padding:4px 4px;margin-top:4px;font-family:'Inter',sans-serif;
-  }
-  .foot-cell input:focus{outline:none;border-bottom:1px solid var(--gold);}
-
-  .checklist-row{ display:flex;flex-wrap:wrap;gap:0;padding:10px 14px; }
+  .checklist-row{ display:flex;flex-wrap:wrap;gap:0;padding:10px 14px;border-top:2px solid var(--line); }
   .check-item{
     display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;
     margin-right:26px;margin-bottom:8px;cursor:pointer;
@@ -235,8 +235,10 @@
     .brand-row{grid-template-columns:1fr;text-align:center;}
     .brand-left{justify-content:center;}
     .brand-right{text-align:center;}
-    .top-row,.meta-row,.foot-row{grid-template-columns:1fr;}
-    .top-cell:first-child,.meta-cell:first-child,.foot-cell:first-child{border-right:none;border-bottom:1px solid #999;}
+    .top-row,.meta-row{grid-template-columns:1fr;}
+    .top-cell:first-child,.meta-cell:first-child{border-right:none;border-bottom:1px solid #999;}
+    .supervisor-field{margin-left:0;width:100%;}
+    .supervisor-field input{flex:1;}
   }
 </style>
 </head>
@@ -294,7 +296,7 @@
     <div class="meta-cell"></div>
   </div>
 
-  <!-- BUS MODEL -->
+  <!-- BUS MODEL + SUPERVISOR -->
   <div class="model-block">
     <label>Bus Model:</label>
     <div class="model-options" id="modelOptions">
@@ -303,6 +305,10 @@
       <div class="model-chip" data-value="Express">Express</div>
     </div>
     <input type="hidden" id="busModel" value="">
+    <div class="supervisor-field">
+      <label for="supervisorName">Supervisor Name:</label>
+      <input type="text" id="supervisorName" placeholder="Supervisor name">
+    </div>
   </div>
 
   <!-- SHIFT TABS -->
@@ -312,11 +318,6 @@
   </div>
 
   <div id="shiftPanels"><!-- shift panels injected here --></div>
-
-  <div class="foot-row">
-    <div class="foot-cell">Supervisor Signature: <input type="text" id="supervisorSign"></div>
-    <div class="foot-cell">Received Signature: <input type="text" id="receivedSign"></div>
-  </div>
 
   <div class="checklist-row">
     <label class="check-item"><input type="checkbox" id="chk_stepney"> Stepney</label>
@@ -337,12 +338,10 @@
 
 <script>
   // ============================================================
-  // 1) Deploy the companion Google Apps Script as a Web App
-  //    (Execute as: Me · Who has access: Anyone with the link)
-  // 2) Paste the deployment URL below.
-  //    Used for BOTH: saving entries (POST) and driver ID lookup (GET).
+  // Google Apps Script Web App URL.
+  // Used for BOTH: saving entries (POST) and driver ID lookup (GET).
   // ============================================================
-  const SCRIPT_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxR-gfM22idcXBTbqJxWcqQ2DqWg_WFLBQ2NHESB8krGZqsZbnYJB7YSndyKEze9Kip/exec";
 
   const form = document.getElementById('logForm');
   const statusMsg = document.getElementById('statusMsg');
@@ -415,33 +414,46 @@
   const shiftPanels = document.getElementById('shiftPanels');
   let shiftCount = 0;
 
+  // Row types:
+  //  ['__section__', title]
+  //  [label, key, type, step]                          -> normal input
+  //  ['__duration__', label, key, fromKey, toKey]       -> auto-calculated, read-only
   const FIELD_ROWS = [
     ['Service No','serviceNo','text',''],
     ['Bus No','busNo','text',''],
-    ['__section__','Karimnagar Shedding'],
+    ['__section__','Depot Shedding'],
     ['Schedule Out Shedding Time','schedOut','time',''],
     ['Schedule In Shedding Time','schedIn','time',''],
     ['Actual Out Shedding Time','actualOut','time',''],
-    ['__section__','Outbound — Karimnagar → JBS'],
+    ['__duration__','Scheduled Shedding Duration','durSchedShed','schedOut','schedIn'],
+    ['__duration__','Shedding Start Delay','durSchedDelay','schedOut','actualOut'],
+    ['__section__','Outbound Trip'],
     ['SOC Start %','socStart','number','0.1'],
     ['Starting KM','startKm1','number',''],
-    ['Waiting Start Time — Karimnagar Point','waitKarimStart','time',''],
-    ['At Karimnagar Point Time','atKarimPoint','time',''],
-    ['Moved From Karimnagar Point Time','movedKarimPoint','time',''],
-    ['Reached at JBS Depot Time','reachedJbs','time',''],
+    ['Waiting Start Time — Origin Point','waitOriginStart','time',''],
+    ['Arrived At Origin Point Time','atOriginPoint','time',''],
+    ['__duration__','Waiting Duration — Origin Point','durWaitOrigin','waitOriginStart','atOriginPoint'],
+    ['Departed From Origin Point Time','movedOriginPoint','time',''],
+    ['__duration__','Halt Duration — Origin Point','durHaltOrigin','atOriginPoint','movedOriginPoint'],
+    ['Reached At Destination Depot Time','reachedDestination','time',''],
+    ['__duration__','Outbound Trip Duration','durOutboundTrip','movedOriginPoint','reachedDestination'],
     ['__section__','SOC End &amp; Charging'],
     ['SOC End %','socEnd','number','0.1'],
     ['Ending KM','endKm1','number',''],
     ['Charging Start Time','chargeStart','time',''],
     ['Charging End Time','chargeEnd','time',''],
+    ['__duration__','Charging Duration','durCharging','chargeStart','chargeEnd'],
     ['SOC at Charging End %','socChargeEnd','number','0.1'],
-    ['__section__','Return — JBS → Karimnagar'],
-    ['Waiting Start Time — JBS Point','waitJbsStart','time',''],
-    ['At JBS Point Time','atJbsPoint','time',''],
-    ['Moved From JBS Point Time','movedJbsPoint','time',''],
+    ['__section__','Return Trip'],
+    ['Waiting Start Time — Destination Point','waitDestStart','time',''],
+    ['Arrived At Destination Point Time','atDestPoint','time',''],
+    ['__duration__','Waiting Duration — Destination Point','durWaitDest','waitDestStart','atDestPoint'],
+    ['Departed From Destination Point Time','movedDestPoint','time',''],
+    ['__duration__','Halt Duration — Destination Point','durHaltDest','atDestPoint','movedDestPoint'],
     ['Starting KM','startKm2','number',''],
-    ['Reached to Karimnagar Time','reachedKarim','time',''],
-    ['SOC % End at Karimnagar','socEndKarim','number','0.1'],
+    ['Reached At Origin Depot Time','reachedOrigin','time',''],
+    ['__duration__','Return Trip Duration','durReturnTrip','movedDestPoint','reachedOrigin'],
+    ['SOC % End At Origin','socEndOrigin','number','0.1'],
     ['Ending KM','endKm2','number','']
   ];
 
@@ -450,6 +462,11 @@
     FIELD_ROWS.forEach(row => {
       if (row[0] === '__section__'){
         rows += `<div class="section-tab">${row[1]}</div>`;
+      } else if (row[0] === '__duration__'){
+        const [, label, key] = row;
+        rows += `
+          <div class="r-label dur-label">${label} <span class="dur-tag">Auto</span></div>
+          <div class="r-cell dur-cell"><input type="text" id="shift${n}_${key}" class="dur-output" placeholder="--" readonly tabindex="-1"></div>`;
       } else {
         const [label, key, type, step] = row;
         const stepAttr = step ? ` step="${step}"` : '';
@@ -463,11 +480,34 @@
       <div class="remarks-block">
         <div class="lbl">Remarks / Bus Complaints — రిమార్కులు / బస్సు ఫిర్యాదులు</div>
         <textarea id="shift${n}_remarks" placeholder="Remarks..."></textarea>
-        <div class="sign-inline">
-          <label>Driver Sign</label>
-          <input type="text" id="shift${n}_driverSign">
-        </div>
       </div>`;
+  }
+
+  // Compute "Hh Mm" between two HH:MM time strings; rolls over midnight if end < start.
+  function computeDuration(v1, v2){
+    if (!v1 || !v2) return '';
+    const [h1, m1] = v1.split(':').map(Number);
+    const [h2, m2] = v2.split(':').map(Number);
+    if ([h1,m1,h2,m2].some(n => Number.isNaN(n))) return '';
+    let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (mins < 0) mins += 24 * 60;
+    const hh = Math.floor(mins / 60);
+    const mm = mins % 60;
+    return (hh > 0 ? hh + 'h ' : '') + mm + 'm';
+  }
+
+  function setupDurations(n){
+    FIELD_ROWS.forEach(row => {
+      if (row[0] !== '__duration__') return;
+      const [, , key, fromKey, toKey] = row;
+      const fromEl = document.getElementById(`shift${n}_${fromKey}`);
+      const toEl = document.getElementById(`shift${n}_${toKey}`);
+      const outEl = document.getElementById(`shift${n}_${key}`);
+      if (!fromEl || !toEl || !outEl) return;
+      function update(){ outEl.value = computeDuration(fromEl.value, toEl.value); }
+      fromEl.addEventListener('input', update);
+      toEl.addEventListener('input', update);
+    });
   }
 
   function addShift(){
@@ -487,6 +527,7 @@
     panel.innerHTML = buildPanelHTML(n);
     shiftPanels.appendChild(panel);
 
+    setupDurations(n);
     activateShift(n);
   }
 
@@ -518,10 +559,14 @@
   function collectShiftData(n){
     const obj = { shiftNumber: n };
     FIELD_ROWS.forEach(row => {
-      if (row[0] !== '__section__') obj[row[1]] = val(`shift${n}_${row[1]}`);
+      if (row[0] === '__section__') return;
+      if (row[0] === '__duration__'){
+        obj[row[2]] = val(`shift${n}_${row[2]}`);
+      } else {
+        obj[row[1]] = val(`shift${n}_${row[1]}`);
+      }
     });
     obj.remarks = val(`shift${n}_remarks`);
-    obj.driverSign = val(`shift${n}_driverSign`);
     return obj;
   }
 
@@ -534,12 +579,11 @@
       driverId: val('driverId'),
       driverName: val('driverName'),
       busModel: val('busModel'),
+      supervisorName: val('supervisorName'),
       logDate: val('logDate'),
       reportingTime: val('reportingTime'),
       timTime: val('timTime'),
       shifts: shifts,
-      supervisorSign: val('supervisorSign'),
-      receivedSign: val('receivedSign'),
       stepney: checked('chk_stepney'),
       jockeyRod: checked('chk_jockeyRod'),
       toolBox: checked('chk_toolBox'),

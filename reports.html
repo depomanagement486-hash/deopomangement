@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Chakra E-Trans - Depot Reports</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --red:#b30000;
+    --line:#1a1a1a;
+    --paper:#fdfdfb;
+    --tabbg:#e9e9e6;
+    --tabactive:#1a1a1a;
+  }
+  *{box-sizing:border-box;}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:#d8d8d4;
+    margin:0;
+    padding:20px;
+    color:var(--ink);
+  }
+
+  .banner-wrap{
+    max-width:900px;
+    margin:0 auto 16px auto;
+    background:#000;
+    border:2px solid var(--line);
+    padding:6px;
+  }
+  .banner-wrap img{
+    display:block;
+    width:100%;
+    height:auto;
+    max-height:120px;
+    object-fit:contain;
+  }
+
+  .toolbar{
+    max-width:900px;
+    margin:0 auto 16px auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    flex:1;
+    min-width:0;
+  }
+  .tab-btn{
+    background:var(--tabbg);
+    border:1px solid #b5b5b0;
+    border-bottom:none;
+    padding:10px 16px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    border-radius:6px 6px 0 0;
+    color:#444;
+    flex:1;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .tab-btn.active{
+    background:var(--paper);
+    color:var(--tabactive);
+    border-color:var(--ink);
+  }
+  .actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .actions button{
+    background:#1a1a1a;
+    color:#fff;
+    border:none;
+    padding:10px 14px;
+    font-size:13px;
+    font-weight:600;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .actions button:hover{ background:#333; }
+  .actions .secondary{ background:#666; }
+  .actions .secondary:hover{ background:#7d7d7d; }
+  .actions .clear-btn{ background:#8a1f1f; }
+  .actions .clear-btn:hover{ background:#a52929; }
+  .actions .print-btn{ background:#0d5c2e; }
+  .actions .print-btn:hover{ background:#127a3d; }
+
+  .sheet-wrap{
+    max-width:900px;
+    margin:0 auto;
+  }
+  .sheet{
+    display:none;
+    background:var(--paper);
+    border:2px solid var(--line);
+    padding:28px 34px;
+  }
+  .sheet.active{ display:block; }
+
+  .form-title{
+    text-align:center;
+    font-size:24px;
+    font-weight:800;
+    letter-spacing:1px;
+    margin:0 0 20px 0;
+    padding-bottom:14px;
+    border-bottom:2px solid var(--line);
+  }
+
+  .field-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 40px;
+    padding-bottom:16px;
+    border-bottom:2px solid var(--line);
+    margin-bottom:0;
+  }
+  .field{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    font-size:14px;
+    min-width:0;
+  }
+  .field label{
+    flex:0 0 155px;
+    font-weight:600;
+  }
+  .field .colon{ flex:0 0 10px; }
+  .field input[type=text]{
+    flex:1;
+    min-width:0;
+    border:none;
+    border-bottom:1px solid var(--ink);
+    background:transparent;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--red);
+    padding:4px 4px;
+    outline:none;
+  }
+  .field input:focus{ background:#fff7d6; }
+
+  .radio-field{ display:flex; align-items:center; gap:10px; font-size:14px; flex-wrap:wrap; }
+  .radio-field label.main{ flex:0 0 155px; font-weight:600; }
+  .radio-field .opts{ display:flex; gap:14px; color:var(--red); font-weight:600; }
+  .radio-field .opts label{ display:flex; align-items:center; gap:4px; cursor:pointer; }
+  .radio-field input[type=radio]{ width:16px; height:16px; }
+
+  .section{
+    border-bottom:2px solid var(--line);
+    padding:16px 0;
+  }
+  .section:last-of-type{ border-bottom:none; }
+  .section h3{
+    text-align:center;
+    font-size:16px;
+    letter-spacing:0.5px;
+    margin:0 0 14px 0;
+  }
+  .ruled-textarea{
+    display:block;
+    border:none;
+    resize:vertical;
+    width:100%;
+    font-family:inherit;
+    font-size:13px;
+    color:var(--red);
+    outline:none;
+    padding:0 4px;
+    line-height:30px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 29px,
+      #999 29px,
+      #999 30px
+    );
+    background-attachment: local;
+  }
+  .ruled-textarea:focus{ background-color:#fff7d6; }
+
+  .release-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1.4fr;
+    gap:10px 20px;
+    font-size:14px;
+  }
+  .release-grid .field label{ flex:0 0 55px; }
+
+  .sig-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+    text-align:center;
+    padding-top:24px;
+  }
+  .sig-grid.two-col{ grid-template-columns:repeat(2,1fr); }
+  .sig-grid div{ font-size:13px; font-weight:600; }
+  .sig-line{
+    margin-top:36px;
+    border-top:1px solid var(--ink);
+    padding-top:4px;
+  }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 700px){
+    body{ padding:12px; }
+    .banner-wrap img{ max-height:80px; }
+    .toolbar{ flex-direction:column; align-items:stretch; }
+    .tabs{ width:100%; }
+    .tab-btn{ padding:12px 8px; font-size:13px; }
+    .actions{ width:100%; }
+    .actions button{ flex:1; padding:12px 8px; font-size:13px; }
+
+    .sheet{ padding:18px 16px; }
+    .form-title{ font-size:19px; }
+
+    .field-grid{ grid-template-columns:1fr; gap:12px; }
+    .field{ flex-wrap:wrap; }
+    .field label{ flex:0 0 100%; }
+    .field input[type=text]{ flex:0 0 100%; }
+
+    .radio-field{ flex-wrap:wrap; }
+    .radio-field label.main{ flex:0 0 100%; }
+
+    .release-grid{ grid-template-columns:1fr; }
+
+    .sig-grid, .sig-grid.two-col{ grid-template-columns:1fr; gap:28px; }
+  }
+
+  @media (max-width: 420px){
+    .form-title{ font-size:16px; }
+    .tab-btn{ font-size:12px; padding:10px 6px; }
+    .actions button{ font-size:12px; padding:10px 6px; }
+  }
+
+  @page{
+    size: A4;
+    margin: 14mm 16mm;
+  }
+
+  @media print{
+    body{ background:#fff; padding:0; }
+    .toolbar{ display:none; }
+    .banner-wrap{ max-width:100%; border:none; margin-bottom:10px; }
+    .sheet-wrap{ max-width:100%; }
+    .sheet{
+      display:none;
+      border:none;
+      padding:0;
+      page-break-after:always;
+    }
+    .sheet.print-active{ display:block !important; }
+    .field-grid, .release-grid{ grid-template-columns:1fr 1fr !important; }
+    .field label{ flex:0 0 155px !important; }
+    .field input[type=text]{ flex:1 !important; }
+    .sig-grid{ grid-template-columns:repeat(3,1fr) !important; }
+    .sig-grid.two-col{ grid-template-columns:repeat(2,1fr) !important; }
+    input, textarea{ color:var(--red) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    textarea{ resize:none; overflow:hidden; }
+  }
+</style>
+</head>
+<body>
+
+<div class="banner-wrap">
+  <img src="logo.gif" alt="Chakra E-Trans Logo">
+</div>
+
+<div class="toolbar">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="breakdown" onclick="showTab('breakdown')">Breakdown Report</button>
+    <button class="tab-btn" data-tab="accident" onclick="showTab('accident')">Accident Report</button>
+  </div>
+  <div class="actions">
+    <button class="clear-btn" onclick="clearCurrent()">Clear Form</button>
+    <button class="print-btn" onclick="printCurrent()">Print (A4)</button>
+    <button class="secondary" onclick="printCurrent()">Save Current as PDF</button>
+    <button onclick="printBoth()">Save Both as PDF</button>
+  </div>
+</div>
+
+<div class="sheet-wrap">
+
+  <!-- ===================== BREAKDOWN REPORT ===================== -->
+  <div class="sheet active" id="breakdown">
+    <h1 class="form-title">BREAKDOWN REPORT</h1>
+
+    <div class="field-grid">
+      <div class="field"><label>Depot</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Driver Name</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Date of Breakdown</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Driver ID</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Bus No.</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Mobile No.</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Bus Type / Model</label><span class="colon">:</span><input type="text"></div>
+      <div class="radio-field">
+        <label class="main">Mechanic Informed</label><span class="colon">:</span>
+        <div class="opts">
+          <label><input type="radio" name="mech"> Yes</label>
+          <label><input type="radio" name="mech"> No</label>
+        </div>
+      </div>
+
+      <div class="field"><label>Service No.</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Mechanic Name</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Route</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Staff ID</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Breakdown Location</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Mobile No.</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Breakdown Time</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Reached Time</label><span class="colon">:</span><input type="text"></div>
+    </div>
+
+    <div class="section">
+      <h3>DETAILS OF BREAKDOWN</h3>
+      <textarea class="ruled-textarea" rows="4"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>CAUSE OF BREAKDOWN</h3>
+      <textarea class="ruled-textarea" rows="3"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>ACTION TAKEN / REPAIRS DONE</h3>
+      <textarea class="ruled-textarea" rows="3"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>BUS RELEASED</h3>
+      <div class="release-grid">
+        <div class="field"><label>Date</label><span class="colon">:</span><input type="text"></div>
+        <div class="field"><label>Time</label><span class="colon">:</span><input type="text"></div>
+        <div class="field"><label>Location</label><span class="colon">:</span><input type="text"></div>
+      </div>
+    </div>
+
+    <div class="sig-grid">
+      <div>Reported By (Driver)<div class="sig-line">&nbsp;</div></div>
+      <div>Verified By (Supervisor)<div class="sig-line">&nbsp;</div></div>
+      <div>Depot Manager Signature<div class="sig-line">&nbsp;</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== ACCIDENT REPORT ===================== -->
+  <div class="sheet" id="accident">
+    <h1 class="form-title">FATAL / NON-FATAL ACCIDENT REPORT</h1>
+
+    <div class="field-grid">
+      <div class="field"><label>Depot</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Driver ID</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Date Of Incident</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Driver Name</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Bus No</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Mobile No.</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Service No</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Bus Model</label><span class="colon">:</span><input type="text"></div>
+
+      <div class="field"><label>Accident Location</label><span class="colon">:</span><input type="text"></div>
+      <div class="field"><label>Accident Time</label><span class="colon">:</span><input type="text"></div>
+    </div>
+
+    <div class="section">
+      <h3>BRIEF DESCRIPTION OF THE ACCIDENT</h3>
+      <textarea class="ruled-textarea" rows="6"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>ACTION TAKEN ON DRIVER</h3>
+      <textarea class="ruled-textarea" rows="3"></textarea>
+    </div>
+
+    <div class="sig-grid two-col">
+      <div>Depot Manager Signature<div class="sig-line">&nbsp;</div></div>
+      <div>Driver Signature<div class="sig-line">&nbsp;</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector('.tab-btn[data-tab="'+id+'"]').classList.add('active');
+}
+
+function clearCurrent(){
+  const active = document.querySelector('.sheet.active');
+  if(!confirm('Clear all entries on this form?')) return;
+  active.querySelectorAll('input[type=text], textarea').forEach(i => i.value = '');
+  active.querySelectorAll('input[type=radio]').forEach(r => r.checked = false);
+}
+
+function printCurrent(){
+  const active = document.querySelector('.sheet.active');
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('print-active'));
+  active.classList.add('print-active');
+  window.print();
+  setTimeout(()=> active.classList.remove('print-active'), 500);
+}
+
+function printBoth(){
+  document.querySelectorAll('.sheet').forEach(s => s.classList.add('print-active'));
+  window.print();
+  setTimeout(()=> document.querySelectorAll('.sheet').forEach(s => s.classList.remove('print-active')), 500);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chakra E-Trans | Accident Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#141414;
+    --line:#000000;
+    --paper:#ffffff;
+    --paper-shade:#f4f4f2;
+    --gold:#b8860b;
+    --lime:#5a8f1f;
+    --red:#b23b3b;
+    --muted:#555;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#dcdcd6;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:24px 12px 60px;
+  }
+  .te{ font-family:'Noto Sans Telugu','Inter',sans-serif; }
+  .sheet{
+    max-width:980px;
+    margin:0 auto;
+    background:var(--paper);
+    border:2px solid var(--line);
+    box-shadow:0 6px 24px rgba(0,0,0,0.25);
+  }
+
+  .brand-row{
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    border-bottom:2px solid var(--line);padding:10px 18px;gap:10px;
+  }
+  .brand-left{display:flex;align-items:center;gap:10px;}
+  .logo-mark{
+    width:34px;height:34px;border-radius:50%;
+    background:conic-gradient(from 200deg, var(--lime), var(--gold), var(--lime));
+    flex-shrink:0;
+  }
+  .brand-left .names{line-height:1.15;}
+  .brand-left .names .main{font-size:16px;font-weight:700;}
+  .brand-left .names .sub{font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+  .bus-icon{text-align:center;font-size:11px;color:var(--muted);font-weight:600;}
+  .brand-right{text-align:right;line-height:1.15;}
+  .brand-right .jbm{font-size:20px;font-weight:800;letter-spacing:0.5px;}
+  .brand-right .jbm span{color:var(--gold);}
+  .brand-right .tag{font-size:9px;color:var(--muted);}
+
+  .title-row{
+    text-align:center;padding:10px 8px;border-bottom:2px solid var(--line);
+    font-weight:700;font-size:15px;letter-spacing:0.5px;
+    display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  }
+  .severity-badge{
+    font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+    letter-spacing:0.5px;text-transform:uppercase;background:#999;color:#fff;
+  }
+  .severity-badge.fatal{background:var(--red);}
+  .severity-badge.nonfatal{background:var(--lime);}
+
+  .section-tab{
+    background:#222;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:1px;
+    text-transform:uppercase;padding:8px 16px;
+  }
+
+  .data-rows{
+    display:grid;grid-template-columns:minmax(220px,1.5fr) 1fr;
+  }
+  .r-label, .r-cell{
+    padding:9px 14px;border-bottom:1px solid #999;border-right:1px solid #999;
+    display:flex;align-items:center;min-height:40px;
+  }
+  .r-label{
+    font-size:13px;font-weight:600;background:var(--paper-shade);
+  }
+  .r-label .te{display:block;font-size:11px;color:var(--muted);font-weight:400;}
+  .r-cell{border-right:none;}
+  .r-cell input, .r-cell select, .r-cell textarea{
+    border:none;background:transparent;width:100%;font-size:14px;
+    font-family:'Inter',sans-serif;padding:3px 2px;
+  }
+  .r-cell textarea{resize:vertical;min-height:44px;}
+  .r-cell input:focus, .r-cell select:focus, .r-cell textarea:focus{outline:none;background:#fffbe8;}
+
+  /* Bus type chips */
+  .chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{
+    border:1.5px solid #999;border-radius:20px;padding:5px 14px;font-size:12.5px;
+    font-weight:600;cursor:pointer;background:#fff;user-select:none;
+  }
+  .chip.active{background:var(--lime);border-color:var(--lime);color:#fff;}
+
+  /* Dropdown styling for severity/status */
+  select.severity-select, select.status-select{
+    border:1px solid #bbb !important;border-radius:4px;padding:6px 10px;background:#fff !important;
+    font-weight:600;cursor:pointer;
+  }
+  select.severity-select{color:var(--red);}
+  select.status-select{color:var(--gold);}
+
+  /* Driver ID lookup */
+  .fetch-btn{
+    background:var(--gold);color:#141414;border:none;font-weight:700;font-size:12px;
+    padding:6px 14px;border-radius:4px;cursor:pointer;white-space:nowrap;
+  }
+  .fetch-btn:hover{background:#a4770a;}
+  .fetch-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  #driverLookupStatus{font-size:12px;color:var(--muted);}
+  #driverLookupStatus.ok{color:var(--lime);font-weight:600;}
+  #driverLookupStatus.err{color:var(--red);font-weight:600;}
+
+  /* Photo upload */
+  .photo-block{padding:14px;}
+  .photo-block .drop-zone{
+    border:2px dashed #aaa;border-radius:8px;padding:22px;text-align:center;
+    cursor:pointer;color:var(--muted);font-size:13px;background:var(--paper-shade);
+  }
+  .photo-block .drop-zone:hover{border-color:var(--gold);color:var(--ink);}
+  .photo-block input[type=file]{display:none;}
+  .thumb-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+  .thumb{
+    position:relative;width:88px;height:88px;border-radius:6px;overflow:hidden;
+    border:1px solid #ccc;
+  }
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .remove-thumb{
+    position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.65);color:#fff;
+    border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;line-height:1;
+  }
+  #photoCount{font-size:12px;color:var(--muted);margin-top:8px;display:block;}
+
+  /* Search existing reports */
+  .search-block{ padding:14px 16px; background:#fbf8ef; }
+  .search-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .search-row input{
+    flex:1; min-width:220px; border:1px solid #bbb; border-radius:4px;
+    padding:9px 12px; font-size:14px; font-family:'Inter',sans-serif;
+  }
+  .search-row input:focus{ outline:none; border-color:var(--gold); }
+  .search-btn{
+    background:var(--gold); color:#141414; border:none; font-weight:700;
+    font-size:13px; padding:9px 18px; border-radius:4px; cursor:pointer;
+  }
+  .search-btn:hover{ background:#a4770a; }
+  .search-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .clear-btn{
+    background:transparent; color:var(--muted); border:1px solid #bbb; font-weight:600;
+    font-size:13px; padding:9px 14px; border-radius:4px; cursor:pointer;
+  }
+  .clear-btn:hover{ border-color:var(--red); color:var(--red); }
+  #searchStatus{ display:block; font-size:12px; color:var(--muted); margin-top:8px; }
+  #searchStatus.ok{ color:var(--lime); font-weight:600; }
+  #searchStatus.err{ color:var(--red); font-weight:600; }
+
+  .result-card{
+    background:#fff; border:1px solid #ddd; border-radius:8px; padding:14px;
+    margin-top:14px;
+  }
+  .result-card-header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    font-weight:700; font-size:14px; padding-bottom:8px; margin-bottom:8px;
+    border-bottom:2px solid var(--ink);
+  }
+  .result-card .preview-grid{ display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; }
+  .result-card .preview-photos-grid{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .result-card .preview-photos-grid img{
+    width:88px; height:88px; object-fit:cover; border-radius:6px; border:1px solid #ccc; cursor:pointer;
+  }
+  @media (max-width:600px){ .result-card .preview-grid{ grid-template-columns:1fr; } }
+
+  /* Live report preview */
+  .preview-block{ padding:14px 16px; background:#fbfaf6; }
+  .preview-empty{ font-size:13px; color:var(--muted); font-style:italic; }
+  .preview-header{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    font-size:15px;font-weight:700;margin-bottom:10px;padding-bottom:8px;
+    border-bottom:2px solid var(--ink);
+  }
+  .preview-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;
+  }
+  .preview-item{
+    padding:6px 0;border-bottom:1px dashed #ccc;font-size:13px;line-height:1.4;
+  }
+  .preview-item .pi-label{ font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.4px;display:block; }
+  .preview-item .pi-value{ color:var(--ink); word-break:break-word; }
+  .preview-item.wide{ grid-column:1 / -1; }
+  .preview-photos{ margin-top:14px; }
+  .preview-photos-label{ font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px; }
+  .preview-photos-grid{ display:flex;gap:10px;flex-wrap:wrap; }
+  .preview-photos-grid img{
+    width:96px;height:96px;object-fit:cover;border-radius:6px;border:1px solid #ccc;
+  }
+  @media (max-width:600px){ .preview-grid{ grid-template-columns:1fr; } }
+
+  .submit-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:16px 14px;background:var(--paper-shade);border-top:2px solid var(--line);
+  }
+  .status-msg{font-size:12.5px;color:var(--muted);}
+  .status-msg.ok{color:var(--lime);font-weight:600;}
+  .status-msg.err{color:var(--red);font-weight:600;}
+  button.save-btn{
+    background:var(--ink);color:#fff;border:none;font-weight:700;font-size:14px;
+    letter-spacing:0.5px;padding:12px 26px;border-radius:4px;cursor:pointer;
+  }
+  button.save-btn:hover{background:var(--gold);color:#141414;}
+  button.save-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .config-note{
+    max-width:980px;margin:0 auto 14px;background:#fff8e1;border:1px solid #e0c068;
+    border-radius:6px;padding:10px 14px;font-size:12px;color:#5a4a1a;line-height:1.6;
+  }
+  .config-note code{background:#eee0b0;padding:1px 5px;border-radius:3px;}
+
+  @media (max-width:720px){
+    .brand-row{grid-template-columns:1fr;text-align:center;}
+    .brand-left{justify-content:center;}
+    .brand-right{text-align:center;}
+    .data-rows{grid-template-columns:1fr;}
+    .r-label{border-right:none;border-bottom:none;padding-bottom:2px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="config-note" id="configNote" style="display:none;">
+  ⚙ <strong>One-time setup:</strong> paste your Google Apps Script Web App URL into <code>SCRIPT_URL</code> near the bottom of this file, then reload.
+</div>
+
+<form id="accidentForm">
+<div class="sheet">
+
+  <div class="brand-row">
+    <div class="brand-left">
+      <div class="logo-mark"></div>
+      <div class="names">
+        <div class="main">Chakra E-Trans</div>
+        <div class="sub">Karimnagar Private Limited — Boundless Journeys, Embracing All</div>
+      </div>
+    </div>
+    <div class="bus-icon">🚌</div>
+    <div class="brand-right">
+      <div class="jbm">JBM <span>Group</span></div>
+      <div class="tag">Our milestones are touchstones</div>
+    </div>
+  </div>
+
+  <div class="title-row">
+    ACCIDENT REPORT
+    <span class="severity-badge" id="severityBadge" style="display:none;"></span>
+  </div>
+
+  <!-- SEARCH EXISTING REPORTS -->
+  <div class="section-tab">Search Existing Reports</div>
+  <div class="search-block">
+    <div class="search-row">
+      <input type="text" id="searchQuery" placeholder="Search by driver name, bus number, service no, ID...">
+      <button type="button" class="search-btn" id="searchBtn">Search</button>
+      <button type="button" class="clear-btn" id="clearSearchBtn">Clear</button>
+    </div>
+    <span id="searchStatus"></span>
+    <div id="searchResults"></div>
+  </div>
+
+  <!-- INCIDENT OVERVIEW -->
+  <div class="section-tab">Incident Overview</div>
+  <div class="data-rows">
+    <div class="r-label">Report Date</div>
+    <div class="r-cell"><input type="date" id="reportDate" required></div>
+
+    <div class="r-label">Time of Accident</div>
+    <div class="r-cell"><input type="time" id="accidentTime"></div>
+
+    <div class="r-label">Depot</div>
+    <div class="r-cell"><input type="text" id="depot"></div>
+
+    <div class="r-label">Spot / Location of Accident</div>
+    <div class="r-cell"><input type="text" id="accidentSpot"></div>
+  </div>
+
+  <!-- BUS & SERVICE DETAILS -->
+  <div class="section-tab">Bus &amp; Service Details</div>
+  <div class="data-rows">
+    <div class="r-label">Bus No</div>
+    <div class="r-cell"><input type="text" id="busNo"></div>
+
+    <div class="r-label">Bus Type</div>
+    <div class="r-cell">
+      <div class="chip-row" id="busTypeOptions">
+        <div class="chip" data-value="EV Express">EV Express</div>
+        <div class="chip" data-value="EV Deluxe">EV Deluxe</div>
+        <div class="chip" data-value="EV Super Luxury">EV Super Luxury</div>
+      </div>
+      <input type="hidden" id="busType" value="">
+    </div>
+
+    <div class="r-label">Service No</div>
+    <div class="r-cell"><input type="text" id="serviceNo"></div>
+
+    <div class="r-label">Route</div>
+    <div class="r-cell"><input type="text" id="route"></div>
+  </div>
+
+  <!-- DRIVER & CONDUCTOR DETAILS -->
+  <div class="section-tab">Driver &amp; Conductor Details</div>
+  <div class="data-rows">
+    <div class="r-label">Driver ID No</div>
+    <div class="r-cell" style="gap:8px;">
+      <input type="text" id="driverId" style="flex:1;">
+      <button type="button" class="fetch-btn" id="lookupDriverBtn">Fetch</button>
+    </div>
+
+    <div class="r-label"></div>
+    <div class="r-cell"><span id="driverLookupStatus"></span></div>
+
+    <div class="r-label">Driver Name</div>
+    <div class="r-cell"><input type="text" id="driverName"></div>
+
+    <div class="r-label">Driver Cell</div>
+    <div class="r-cell"><input type="tel" id="driverCell"></div>
+
+    <div class="r-label">Conductor Name</div>
+    <div class="r-cell"><input type="text" id="conductorName"></div>
+
+    <div class="r-label">Conductor Staff No</div>
+    <div class="r-cell"><input type="text" id="conductorStaffNo"></div>
+
+    <div class="r-label">Conductor Cell</div>
+    <div class="r-cell"><input type="tel" id="conductorCell"></div>
+  </div>
+
+  <!-- ACCIDENT DETAILS -->
+  <div class="section-tab">Accident Details</div>
+  <div class="data-rows">
+    <div class="r-label">1. Cause of Accident</div>
+    <div class="r-cell"><textarea id="cause" placeholder="Describe how the accident happened..."></textarea></div>
+
+    <div class="r-label">2. Route of Accident</div>
+    <div class="r-cell"><input type="text" id="accidentRoute" placeholder="Route on which accident occurred"></div>
+
+    <div class="r-label">3. Which Service</div>
+    <div class="r-cell"><input type="text" id="accidentService" placeholder="Service number involved"></div>
+
+    <div class="r-label">4. Which Bus</div>
+    <div class="r-cell"><input type="text" id="accidentBus" placeholder="Bus number involved"></div>
+
+    <div class="r-label">5. Driver Name &amp; ID</div>
+    <div class="r-cell"><input type="text" id="accidentDriver" placeholder="Name and ID of driver at the time"></div>
+
+    <div class="r-label">6. Fatal or Non-Fatal</div>
+    <div class="r-cell">
+      <select id="severity" class="severity-select">
+        <option value="">-- Select --</option>
+        <option value="Fatal">Fatal</option>
+        <option value="Non-Fatal">Non-Fatal</option>
+      </select>
+    </div>
+
+    <div class="r-label">7. Status</div>
+    <div class="r-cell">
+      <select id="status" class="status-select">
+        <option value="">-- Select --</option>
+        <option value="UPC">UPC</option>
+        <option value="Depot">Depot</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PHOTO EVIDENCE -->
+  <div class="section-tab">Photo Evidence — Accident Spot / Position</div>
+  <div class="photo-block">
+    <label class="drop-zone" for="photoInput">📷 Tap to upload photos of the accident spot / bus position</label>
+    <input type="file" id="photoInput" accept="image/*" multiple>
+    <div class="thumb-row" id="thumbRow"></div>
+    <span id="photoCount">No photos attached yet.</span>
+  </div>
+
+  <!-- REPORTED BY -->
+  <div class="section-tab">Reported By</div>
+  <div class="data-rows">
+    <div class="r-label">Name &amp; Designation</div>
+    <div class="r-cell"><input type="text" id="reportedBy"></div>
+  </div>
+
+  <!-- LIVE REPORT PREVIEW -->
+  <div class="section-tab">Report Preview</div>
+  <div class="preview-block" id="previewBlock">
+    <div class="preview-empty" id="previewEmpty">Start filling in the details above — the full report will build here automatically.</div>
+    <div class="preview-content" id="previewContent" style="display:none;">
+      <div class="preview-header">
+        <span id="previewTitle">Accident Report</span>
+        <span class="severity-badge" id="previewSeverityBadge" style="display:none;"></span>
+      </div>
+      <div class="preview-grid" id="previewGrid"></div>
+      <div class="preview-photos" id="previewPhotos" style="display:none;">
+        <div class="preview-photos-label">Photo Evidence</div>
+        <div class="preview-photos-grid" id="previewPhotosGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-bar">
+    <span class="status-msg" id="statusMsg">Fill in the details above, then save.</span>
+    <button type="submit" class="save-btn" id="saveBtn">Save to Google Sheet</button>
+  </div>
+
+</div>
+</form>
+
+<script>
+  // ============================================================
+  // Same Google Apps Script Web App URL used by the other pages.
+  // ============================================================
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbywY25RhrAk3jceU_TMWPQhu-0m3JGGaI_WYzDK2AExxh3882AdEHBJxC-sTGdacZwieg/exec";
+
+  const form = document.getElementById('accidentForm');
+  const statusMsg = document.getElementById('statusMsg');
+  const saveBtn = document.getElementById('saveBtn');
+  const configNote = document.getElementById('configNote');
+  if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1) configNote.style.display = 'block';
+
+  function val(id){ const el = document.getElementById(id); return el ? (el.value || "") : ""; }
+
+  /* ---------------- Driver ID lookup ---------------- */
+  const lookupDriverBtn = document.getElementById('lookupDriverBtn');
+  const driverLookupStatus = document.getElementById('driverLookupStatus');
+
+  async function lookupDriverById(){
+    const id = val('driverId').trim();
+    if (!id){
+      driverLookupStatus.textContent = 'Enter a Driver ID first.';
+      driverLookupStatus.className = 'err';
+      return;
+    }
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1){
+      driverLookupStatus.textContent = 'Connect the Google Sheet first.';
+      driverLookupStatus.className = 'err';
+      return;
+    }
+    lookupDriverBtn.disabled = true;
+    driverLookupStatus.textContent = 'Looking up...';
+    driverLookupStatus.className = '';
+    try{
+      const res = await fetch(SCRIPT_URL + '?id=' + encodeURIComponent(id));
+      const data = await res.json();
+      if (data && data.found){
+        document.getElementById('driverName').value = data.name || '';
+        document.getElementById('driverCell').value = data.mobile || '';
+        driverLookupStatus.textContent = 'Details loaded ✓';
+        driverLookupStatus.className = 'ok';
+        updatePreview();
+      } else {
+        driverLookupStatus.textContent = 'No record found — enter manually.';
+        driverLookupStatus.className = 'err';
+      }
+    }catch(err){
+      driverLookupStatus.textContent = 'Lookup failed — check connection or Script URL.';
+      driverLookupStatus.className = 'err';
+    }finally{
+      lookupDriverBtn.disabled = false;
+    }
+  }
+  lookupDriverBtn.addEventListener('click', lookupDriverById);
+  document.getElementById('driverId').addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); lookupDriverById(); }
+  });
+
+  /* ---------------- Bus type chips ---------------- */
+  const busTypeOptions = document.getElementById('busTypeOptions');
+  const busTypeInput = document.getElementById('busType');
+  busTypeOptions.addEventListener('click', function(e){
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    [...busTypeOptions.children].forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    busTypeInput.value = chip.dataset.value;
+    updatePreview();
+  });
+
+  /* ---------------- Severity badge ---------------- */
+  const severitySelect = document.getElementById('severity');
+  const severityBadge = document.getElementById('severityBadge');
+  severitySelect.addEventListener('change', function(){
+    if (this.value){
+      severityBadge.textContent = this.value;
+      severityBadge.className = 'severity-badge' + (this.value === 'Fatal' ? ' fatal' : ' nonfatal');
+      severityBadge.style.display = 'inline-block';
+    } else {
+      severityBadge.style.display = 'none';
+    }
+  });
+
+  /* ---------------- Photo upload + preview ---------------- */
+  const photoInput = document.getElementById('photoInput');
+  const thumbRow = document.getElementById('thumbRow');
+  const photoCount = document.getElementById('photoCount');
+  let photos = []; // { name, dataUrl }
+
+  function renderThumbs(){
+    thumbRow.innerHTML = '';
+    photos.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${p.dataUrl}" alt="${p.name}"><button type="button" class="remove-thumb" data-i="${i}">×</button>`;
+      thumbRow.appendChild(div);
+    });
+    photoCount.textContent = photos.length ? `${photos.length} photo(s) attached.` : 'No photos attached yet.';
+    updatePreview();
+  }
+
+  photoInput.addEventListener('change', function(){
+    const files = [...this.files];
+    let pending = files.length;
+    if (!pending) return;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = function(e){
+        photos.push({ name: file.name, dataUrl: e.target.result });
+        renderThumbs();
+      };
+      reader.readAsDataURL(file);
+    });
+    photoInput.value = '';
+  });
+
+  thumbRow.addEventListener('click', function(e){
+    const btn = e.target.closest('.remove-thumb');
+    if (!btn) return;
+    photos.splice(Number(btn.dataset.i), 1);
+    renderThumbs();
+  });
+
+  /* ---------------- Live report preview ---------------- */
+  const PREVIEW_FIELDS = [
+    { id: 'reportDate', label: 'Report Date' },
+    { id: 'accidentTime', label: 'Time of Accident' },
+    { id: 'depot', label: 'Depot' },
+    { id: 'accidentSpot', label: 'Spot / Location' },
+    { id: 'busNo', label: 'Bus No' },
+    { id: 'busType', label: 'Bus Type' },
+    { id: 'serviceNo', label: 'Service No' },
+    { id: 'route', label: 'Route' },
+    { id: 'driverName', label: 'Driver Name' },
+    { id: 'driverId', label: 'Driver ID No' },
+    { id: 'driverCell', label: 'Driver Cell' },
+    { id: 'conductorName', label: 'Conductor Name' },
+    { id: 'conductorStaffNo', label: 'Conductor Staff No' },
+    { id: 'conductorCell', label: 'Conductor Cell' },
+    { id: 'cause', label: 'Cause of Accident', wide: true },
+    { id: 'accidentRoute', label: 'Route of Accident' },
+    { id: 'accidentService', label: 'Which Service' },
+    { id: 'accidentBus', label: 'Which Bus' },
+    { id: 'accidentDriver', label: 'Driver Name & ID' },
+    { id: 'status', label: 'Status' },
+    { id: 'reportedBy', label: 'Reported By' }
+  ];
+
+  const previewEmpty = document.getElementById('previewEmpty');
+  const previewContent = document.getElementById('previewContent');
+  const previewGrid = document.getElementById('previewGrid');
+  const previewSeverityBadge = document.getElementById('previewSeverityBadge');
+  const previewPhotos = document.getElementById('previewPhotos');
+  const previewPhotosGrid = document.getElementById('previewPhotosGrid');
+
+  function updatePreview(){
+    const filled = PREVIEW_FIELDS.filter(f => val(f.id).trim() !== '');
+    const hasSeverity = val('severity').trim() !== '';
+    const hasAnyData = filled.length > 0 || hasSeverity || photos.length > 0;
+
+    if (!hasAnyData){
+      previewEmpty.style.display = 'block';
+      previewContent.style.display = 'none';
+      return;
+    }
+    previewEmpty.style.display = 'none';
+    previewContent.style.display = 'block';
+
+    previewGrid.innerHTML = filled.map(f => `
+      <div class="preview-item${f.wide ? ' wide' : ''}">
+        <span class="pi-label">${f.label}</span>
+        <span class="pi-value">${escapeHtml(val(f.id))}</span>
+      </div>`).join('');
+
+    if (hasSeverity){
+      previewSeverityBadge.textContent = val('severity');
+      previewSeverityBadge.className = 'severity-badge' + (val('severity') === 'Fatal' ? ' fatal' : ' nonfatal');
+      previewSeverityBadge.style.display = 'inline-block';
+    } else {
+      previewSeverityBadge.style.display = 'none';
+    }
+
+    if (photos.length){
+      previewPhotos.style.display = 'block';
+      previewPhotosGrid.innerHTML = photos.map(p => `<img src="${p.dataUrl}" alt="${escapeHtml(p.name)}">`).join('');
+    } else {
+      previewPhotos.style.display = 'none';
+      previewPhotosGrid.innerHTML = '';
+    }
+  }
+
+  function escapeHtml(str){
+    return str.replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  }
+
+  form.addEventListener('input', updatePreview);
+  form.addEventListener('change', updatePreview);
+
+  /* ---------------- Search existing reports ---------------- */
+  const searchQueryInput = document.getElementById('searchQuery');
+  const searchBtn = document.getElementById('searchBtn');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const searchStatus = document.getElementById('searchStatus');
+  const searchResultsEl = document.getElementById('searchResults');
+
+  function buildFieldGridHtml(record){
+    return PREVIEW_FIELDS
+      .filter(f => (record[f.id] || '').toString().trim() !== '')
+      .map(f => `
+        <div class="preview-item${f.wide ? ' wide' : ''}">
+          <span class="pi-label">${f.label}</span>
+          <span class="pi-value">${escapeHtml(String(record[f.id]))}</span>
+        </div>`).join('');
+  }
+
+  function getPhotoUrls(record){
+    if (Array.isArray(record.photoLinks)) return record.photoLinks;
+    if (typeof record.photoLinks === 'string' && record.photoLinks.trim()){
+      return record.photoLinks.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  }
+
+  function renderResultCard(record){
+    const severity = record.severity || '';
+    const badgeHtml = severity
+      ? `<span class="severity-badge${severity === 'Fatal' ? ' fatal' : ' nonfatal'}">${escapeHtml(severity)}</span>`
+      : '';
+    const photoUrls = getPhotoUrls(record);
+    const photosHtml = photoUrls.length ? `
+      <div class="preview-photos-label" style="margin-top:10px;">Photo Evidence</div>
+      <div class="preview-photos-grid">${photoUrls.map(u => `<a href="${u}" target="_blank" rel="noopener"><img src="${u}" alt="photo"></a>`).join('')}</div>` : '';
+    const headerLabel = record.driverName || record.busNo || record.reportDate || 'Report';
+    return `
+      <div class="result-card">
+        <div class="result-card-header">
+          <span>${escapeHtml(String(headerLabel))}${record.reportDate ? ' — ' + escapeHtml(String(record.reportDate)) : ''}</span>
+          ${badgeHtml}
+        </div>
+        <div class="preview-grid">${buildFieldGridHtml(record)}</div>
+        ${photosHtml}
+      </div>`;
+  }
+
+  async function performSearch(){
+    const q = searchQueryInput.value.trim();
+    if (!q){
+      searchStatus.textContent = 'Enter a driver name, bus number, or other detail to search.';
+      searchStatus.className = 'err';
+      return;
+    }
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1){
+      searchStatus.textContent = 'Connect the Google Sheet first.';
+      searchStatus.className = 'err';
+      return;
+    }
+    searchBtn.disabled = true;
+    searchStatus.textContent = 'Searching...';
+    searchStatus.className = '';
+    searchResultsEl.innerHTML = '';
+    try{
+      const res = await fetch(SCRIPT_URL + '?search=' + encodeURIComponent(q));
+      const data = await res.json();
+      const results = (data && data.results) || [];
+      if (results.length){
+        searchResultsEl.innerHTML = results.map(renderResultCard).join('');
+        searchStatus.textContent = `${results.length} matching report(s) found.`;
+        searchStatus.className = 'ok';
+      } else {
+        searchStatus.textContent = 'No matching reports found.';
+        searchStatus.className = 'err';
+      }
+    }catch(err){
+      searchStatus.textContent = 'Search failed — check connection or Script URL.';
+      searchStatus.className = 'err';
+    }finally{
+      searchBtn.disabled = false;
+    }
+  }
+
+  searchBtn.addEventListener('click', performSearch);
+  searchQueryInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); performSearch(); }
+  });
+  clearSearchBtn.addEventListener('click', function(){
+    searchQueryInput.value = '';
+    searchStatus.textContent = '';
+    searchStatus.className = '';
+    searchResultsEl.innerHTML = '';
+  });
+
+  /* ---------------- Collect + Save ---------------- */
+  function collectData(){
+    return {
+      timestamp: new Date().toISOString(),
+      reportDate: val('reportDate'),
+      accidentTime: val('accidentTime'),
+      depot: val('depot'),
+      accidentSpot: val('accidentSpot'),
+      busNo: val('busNo'),
+      busType: val('busType'),
+      serviceNo: val('serviceNo'),
+      route: val('route'),
+      driverName: val('driverName'),
+      driverId: val('driverId'),
+      driverCell: val('driverCell'),
+      conductorName: val('conductorName'),
+      conductorStaffNo: val('conductorStaffNo'),
+      conductorCell: val('conductorCell'),
+      cause: val('cause'),
+      accidentRoute: val('accidentRoute'),
+      accidentService: val('accidentService'),
+      accidentBus: val('accidentBus'),
+      accidentDriver: val('accidentDriver'),
+      severity: val('severity'),
+      status: val('status'),
+      reportedBy: val('reportedBy'),
+      photos: photos
+    };
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+
+    if (!val('reportDate')){
+      statusMsg.textContent = 'Please enter the Report Date before saving.';
+      statusMsg.className = 'status-msg err';
+      return;
+    }
+    if (SCRIPT_URL.indexOf('PASTE_YOUR') !== -1){
+      statusMsg.textContent = 'Google Sheet not connected yet — add your Apps Script URL in the code.';
+      statusMsg.className = 'status-msg err';
+      return;
+    }
+
+    const data = collectData();
+    saveBtn.disabled = true;
+    statusMsg.textContent = 'Saving...';
+    statusMsg.className = 'status-msg';
+
+    try{
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(data)
+      });
+      statusMsg.textContent = 'Saved to Google Sheet ✓';
+      statusMsg.className = 'status-msg ok';
+      form.reset();
+      photos = [];
+      renderThumbs();
+      busTypeInput.value = '';
+      [...busTypeOptions.children].forEach(c => c.classList.remove('active'));
+      severityBadge.style.display = 'none';
+      severityBadge.className = 'severity-badge';
+      driverLookupStatus.textContent = '';
+      driverLookupStatus.className = '';
+      updatePreview();
+    }catch(err){
+      statusMsg.textContent = 'Could not save — check your internet connection or Script URL.';
+      statusMsg.className = 'status-msg err';
+    }finally{
+      saveBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>

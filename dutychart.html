@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Driver Duty Chart</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root{
     --band:#e3ecdb; --cream:#fdf1d4; --white:#ffffff; --pink:#f7b9bb;
@@ -66,6 +68,12 @@
   .footer-note{font-size:11px; color:#777; margin-top:10px; line-height:1.5;}
   .slot-form{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;}
   .slot-form input, .slot-form select{padding:5px 7px; border:1px solid #bbb; border-radius:4px; font-size:11.5px;}
+
+  @media print{
+    .panel, .tabs, .footer-note, .mini-btn, select.assign-select, .badge{display:none !important;}
+    body{background:#fff; padding:0;}
+    .chart-wrap{border:none;}
+  }
 </style>
 </head>
 <body>
@@ -74,27 +82,18 @@
 <div class="sub">Fixed route/time slots (seeded from your original charts) filled each day from your live driver list, with fair rotation and no-show override.</div>
 
 <div class="panel">
-  <div class="field">
-    <label>Google Sheet (Apps Script) URL</label>
-    <input type="text" id="sheetUrl" class="wide"
-      value="https://script.google.com/macros/s/AKfycbywY25RhrAk3jceU_TMWPQhu-0m3JGGaI_WYzDK2AExxh3882AdEHBJxC-sTGdacZwieg/exec">
-  </div>
-  <div class="field"><button id="loadBtn">Load driver pool</button></div>
+  <input type="hidden" id="sheetUrl"
+    value="https://script.google.com/macros/s/AKfycbxR-gfM22idcXBTbqJxWcqQ2DqWg_WFLBQ2NHESB8krGZqsZbnYJB7YSndyKEze9Kip/exec">
   <div class="field">
     <label>Duty date</label>
     <input type="date" id="dutyDate">
   </div>
   <div class="field"><button id="autoAssignBtn" class="secondary">Auto-assign open slots</button></div>
   <div class="field"><button id="resetDayBtn" class="danger">Clear today's overrides</button></div>
+  <div class="field"><button id="printBtn" class="secondary">Print</button></div>
+  <div class="field"><button id="exportExcelBtn" class="secondary">Save as Excel</button></div>
+  <div class="field"><button id="exportPdfBtn" class="secondary">Save as PDF</button></div>
   <span id="statusMsg" class="status"></span>
-</div>
-
-<div class="panel" id="importPanel" style="display:none;">
-  <div class="field" style="flex:1; min-width:280px;">
-    <label>Couldn't fetch automatically? Paste the sheet's JSON/CSV output here</label>
-    <textarea id="pasteArea" placeholder="Paste rows here"></textarea>
-  </div>
-  <div class="field"><button id="importPasteBtn">Import pasted driver list</button></div>
 </div>
 
 <div class="tabs" id="tabBar"></div>
@@ -118,6 +117,11 @@ let slots = [];
 let assignments = {};
 let stats = {};
 let activeTab = 'ALL';
+
+/* Chart categories that should always show as tabs, even before any slots exist under them.
+   Super Luxury Deluxe: long-distance routes (e.g. NZB-WGL / WGL-NZB direction pairs).
+   Express: service groups GDK, MNTY, KMR, MNCL, JGTL. */
+const KNOWN_CHARTS = ['Duty Chart -1','Duty Chart -2','Duty Chart -3','Super Luxury Deluxe','Express'];
 
 /* ---------- seed slot template (from the three original duty charts) ---------- */
 function seedSlots(){
@@ -234,10 +238,10 @@ function normalizeDriver(obj){
   };
 }
 
-/* ---------- fetch driver pool from Apps Script ---------- */
+/* ---------- fetch driver pool from Apps Script (auto-loads silently on open) ---------- */
 async function loadPool(){
   let url = $('sheetUrl').value.trim();
-  if(!url){ setStatus('Enter a Sheet URL first.', 'err'); return; }
+  if(!url) return;
   if(!/[?&]action=/.test(url)) url += (url.includes('?') ? '&' : '?') + 'action=list';
   setStatus('Loading driver pool…');
   try{
@@ -248,10 +252,8 @@ async function loadPool(){
     try{ data = JSON.parse(text); }catch(e){ data = parseCSV(text); }
     applyIncomingPool(data);
     setStatus('Loaded ' + pool.length + ' drivers from the sheet.', 'ok');
-    $('importPanel').style.display = 'none';
   }catch(err){
-    setStatus('Could not fetch directly. Paste the sheet output below instead.', 'err');
-    $('importPanel').style.display = 'flex';
+    setStatus('Could not load the driver pool from the sheet.', 'err');
   }
 }
 function parseCSV(text){
@@ -275,17 +277,6 @@ function applyIncomingPool(data){
   savePool(); saveStats();
   render();
 }
-$('importPasteBtn').onclick = () => {
-  const raw = $('pasteArea').value.trim();
-  if(!raw){ setStatus('Paste some data first.', 'err'); return; }
-  try{
-    let data;
-    try{ data = JSON.parse(raw); }catch(e){ data = parseCSV(raw); }
-    applyIncomingPool(data);
-    setStatus('Imported ' + pool.length + ' drivers from pasted data.', 'ok');
-  }catch(e){ setStatus('Could not parse that data. Check the format.', 'err'); }
-};
-$('loadBtn').onclick = loadPool;
 
 /* ---------- fairness ordering ---------- */
 function fairnessSort(ids){
@@ -307,7 +298,7 @@ function currentDate(){ return $('dutyDate').value || new Date().toISOString().s
 
 /* ---------- assignment actions ---------- */
 $('autoAssignBtn').onclick = () => {
-  if(!pool.length){ setStatus('Load the driver pool first.', 'err'); return; }
+  if(!pool.length){ setStatus('Driver pool has not loaded yet — try again in a moment.', 'err'); return; }
   const today = currentDate();
   const activeIds = pool.filter(d=>d.status==='Active').map(d=>d.empId);
   const usedToday = new Set(Object.entries(assignments).filter(([k])=>k.startsWith(today+'|')).map(([,v])=>v.empId));
@@ -332,6 +323,29 @@ $('resetDayBtn').onclick = () => {
   saveAssignments();
   setStatus('Cleared overrides for ' + today + '.', 'ok');
   render();
+};
+
+$('printBtn').onclick = () => { window.print(); };
+
+$('exportExcelBtn').onclick = () => {
+  const table = $('chartArea').querySelector('table');
+  if(!table){ setStatus('Nothing to export yet.', 'err'); return; }
+  try{
+    const wb = XLSX.utils.table_to_book(table, {sheet: (activeTab||'Chart').slice(0,31)});
+    XLSX.writeFile(wb, `duty-chart-${(activeTab||'chart').replace(/[^a-z0-9-]+/gi,'_')}-${currentDate()}.xlsx`);
+  }catch(e){ setStatus('Excel export failed.', 'err'); }
+};
+
+$('exportPdfBtn').onclick = () => {
+  const area = $('chartArea');
+  if(!area.querySelector('table')){ setStatus('Nothing to export yet.', 'err'); return; }
+  try{
+    html2pdf().set({
+      filename: `duty-chart-${(activeTab||'chart').replace(/[^a-z0-9-]+/gi,'_')}-${currentDate()}.pdf`,
+      margin: 10,
+      jsPDF: { orientation: 'landscape', unit: 'pt', format: 'a3' }
+    }).from(area).save();
+  }catch(e){ setStatus('PDF export failed.', 'err'); }
 };
 
 function markNoShow(slotId){
@@ -388,7 +402,10 @@ window.deleteSlot = deleteSlot;
 $('slotAddBtn') && ($('slotAddBtn').onclick = addSlot);
 
 /* ---------- rendering ---------- */
-function chartsPresent(){ return [...new Set(slots.map(s=>s.chart))].sort(); }
+function chartsPresent(){
+  const extra = [...new Set(slots.map(s=>s.chart))].filter(c=>!KNOWN_CHARTS.includes(c)).sort();
+  return [...KNOWN_CHARTS, ...extra];
+}
 
 function renderTabs(){
   const bar = $('tabBar');
@@ -420,10 +437,19 @@ function renderBody(){
 }
 
 function renderChart(area){
-  if(!slots.length){ area.innerHTML = '<div class="empty">No duty slots defined yet. Add some in the Manage Slots tab.</div>'; return; }
   const today = currentDate();
   let rows = slots;
   if(activeTab !== 'ALL') rows = rows.filter(s=>s.chart===activeTab);
+
+  if(!rows.length){
+    const hint = (activeTab==='Super Luxury Deluxe')
+      ? 'No slots yet. Add them in Manage Slots — e.g. Serv No "NZB-WGL 01" or "WGL-NZB 01".'
+      : (activeTab==='Express')
+      ? 'No slots yet. Add them in Manage Slots — e.g. Serv No "GDK 01", "MNTY 01", "KMR 01", "MNCL 01", "JGTL 01".'
+      : 'No duty slots defined yet. Add some in the Manage Slots tab.';
+    area.innerHTML = `<div class="empty">${hint}</div>`;
+    return;
+  }
 
   const options = pool.filter(d=>d.status==='Active')
     .map(d=>`<option value="${d.empId}">${d.empId} — ${d.empName}</option>`).join('');
@@ -471,7 +497,7 @@ function renderChart(area){
 }
 
 function renderPool(area){
-  if(!pool.length){ area.innerHTML = '<div class="empty">No drivers loaded yet. Click "Load driver pool" above.</div>'; return; }
+  if(!pool.length){ area.innerHTML = '<div class="empty">No drivers loaded yet. Reload the page to try fetching the Google Sheet again.</div>'; return; }
   let html = `<table><tbody><tr class="band-row"><td colspan="6">Driver Pool (${pool.length})</td></tr></tbody>
   <thead class="cols"><tr><th>#</th><th>Emp ID</th><th>Name</th><th>Phone</th><th>Depot</th><th>Status</th></tr></thead><tbody>`;
   pool.forEach((d,i)=>{
@@ -503,8 +529,11 @@ function renderSlotManager(area){
   let html = `<div style="padding:12px; background:#fff;">
     <div class="slot-form">
       <div><label style="font-size:11px;font-weight:600;">Chart</label><br>
-        <select id="slotChart"><option>Duty Chart -1</option><option>Duty Chart -2</option><option>Duty Chart -3</option></select></div>
-      <div><label style="font-size:11px;font-weight:600;">Serv No</label><br><input id="slotServ" placeholder="e.g. EJ 66"></div>
+        <select id="slotChart">
+          <option>Duty Chart -1</option><option>Duty Chart -2</option><option>Duty Chart -3</option>
+          <option>Super Luxury Deluxe</option><option>Express</option>
+        </select></div>
+      <div><label style="font-size:11px;font-weight:600;">Serv No</label><br><input id="slotServ" placeholder="e.g. NZB-WGL 01 / GDK 01"></div>
       <div><label style="font-size:11px;font-weight:600;">Driver RT</label><br><input id="slotRT" placeholder="11:20"></div>
       <div><label style="font-size:11px;font-weight:600;">Sch Dept</label><br><input id="slotDept" placeholder="12:20"></div>
       <div><label style="font-size:11px;font-weight:600;">Sch Arvl</label><br><input id="slotArvl" placeholder="20:20"></div>
@@ -530,10 +559,12 @@ function renderSlotManager(area){
   await loadPersisted();
   render();
   $('footerNote').innerHTML =
-    'The tool fetches your sheet with <code>?action=list</code> appended automatically. Duty history (last date driven, ' +
-    'total duties) is saved in this browser so <b>Auto-assign</b> and the <b>Rotation Overview</b> tab stay fair over time. ' +
+    'The driver pool loads automatically from the connected Google Sheet each time this page opens. Duty history (last date driven, ' +
+    'total duties) is saved in this browser so the <b>Rotation Overview</b> tab stays fair over time. ' +
     'Use <b>No-show</b> to pull in the next fairest available driver instantly — the row turns pink, matching the original chart. ' +
-    'Add, edit, or remove duty slots any time in the <b>Manage Slots</b> tab.';
+    'Add, edit, or remove duty slots any time in the <b>Manage Slots</b> tab — that\'s also where you build out the ' +
+    '<b>Super Luxury Deluxe</b> (NZB-WGL / WGL-NZB) and <b>Express</b> (GDK, MNTY, KMR, MNCL, JGTL) charts. ' +
+    'Use <b>Print</b>, <b>Save as Excel</b>, or <b>Save as PDF</b> to export whichever tab is currently open.';
   loadPool();
 })();
 </script>
